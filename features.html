@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Features - Battery Pack Designer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0A0E1A 0%, #1A1F35 100%);
+            color: white;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 3rem;
+            background: linear-gradient(135deg, #00D9FF, #7B61FF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .hero {
+            text-align: center;
+            padding: 3rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 3rem;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #00D9FF, #7B61FF);
+            color: white;
+            text-decoration: none;
+            border-radius: 12px;
+            font-weight: 600;
+            margin-top: 2rem;
+            transition: transform 0.3s;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 3rem 0;
+        }
+
+        .feature-card {
+            background: rgba(26, 31, 53, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            backdrop-filter: blur(20px);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            color: #00D9FF;
+            margin-bottom: 1rem;
+        }
+
+        .spec-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .spec-list li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .spec-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #00E676;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="hero">
+            <h1>Battery Pack Designer</h1>
+            <p style="font-size: 1.25rem; color: #A0AEC0; max-width: 600px; margin: 0 auto;">
+                Professional dashboard for designing custom battery pack configurations with real-time connection
+                diagrams
+            </p>
+            <a href="index.html" class="cta-button">Open Dashboard →</a>
+        </div>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🎯</div>
+                <h3>Step-by-Step Wizard</h3>
+                <p>Guided configuration process in 3 easy steps:</p>
+                <ul class="spec-list">
+                    <li>Cell Configuration</li>
+                    <li>Pack Configuration (S/P)</li>
+                    <li>Protection & Connectors</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Real-Time Calculations</h3>
+                <p>Instant calculations as you configure:</p>
+                <ul class="spec-list">
+                    <li>Pack Voltage (V)</li>
+                    <li>Pack Capacity (mAh)</li>
+                    <li>Total Energy (Wh)</li>
+                    <li>Max Power (W)</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🎨</div>
+                <h3>Visual Diagrams</h3>
+                <p>Professional SVG connection diagrams:</p>
+                <ul class="spec-list">
+                    <li>Series/Parallel visualization</li>
+                    <li>Cell labeling</li>
+                    <li>Wire routing</li>
+                    <li>BMS integration</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🔋</div>
+                <h3>Multiple Cell Types</h3>
+                <p>Support for various battery cells:</p>
+                <ul class="spec-list">
+                    <li>18650 Li-ion</li>
+                    <li>21700 Li-ion</li>
+                    <li>26650 LiFePO4</li>
+                    <li>32650 LiFePO4</li>
+                    <li>Pouch Cells</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🔌</div>
+                <h3>Connector Options</h3>
+                <p>Choose from popular connectors:</p>
+                <ul class="spec-list">
+                    <li>XT60 / XT90</li>
+                    <li>Anderson PowerPole</li>
+                    <li>Deans T-Plug</li>
+                    <li>JST connectors</li>
+                    <li>Custom options</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🛡️</div>
+                <h3>Safety Features</h3>
+                <p>Built-in safety considerations:</p>
+                <ul class="spec-list">
+                    <li>BMS protection option</li>
+                    <li>Discharge current limits</li>
+                    <li>Balance connector support</li>
+                    <li>Voltage range display</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">💾</div>
+                <h3>Save & Export</h3>
+                <p>Download your configurations:</p>
+                <ul class="spec-list">
+                    <li>Save as JSON</li>
+                    <li>Export diagram as SVG</li>
+                    <li>Reusable configurations</li>
+                    <li>Professional documentation</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🎭</div>
+                <h3>Modern Design</h3>
+                <p>Beautiful, premium interface:</p>
+                <ul class="spec-list">
+                    <li>Glassmorphism effects</li>
+                    <li>Smooth animations</li>
+                    <li>Dark theme</li>
+                    <li>Responsive layout</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <div class="feature-icon">🔍</div>
+                <h3>Zoom Controls</h3>
+                <p>Explore your diagrams:</p>
+                <ul class="spec-list">
+                    <li>Zoom in/out</li>
+                    <li>Reset view</li>
+                    <li>Pan and navigate</li>
+                    <li>High-quality SVG</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="hero" style="margin-top: 4rem;">
+            <h2 style="font-size: 2rem; margin-bottom: 1rem;">Ready to Design Your Battery Pack?</h2>
+            <p style="color: #A0AEC0; margin-bottom: 2rem;">
+                Start configuring your custom battery pack in seconds
+            </p>
+            <a href="index.html" class="cta-button">Launch Dashboard →</a>
+        </div>
+
+        <div
+            style="text-align: center; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); color: #718096;">
+            <p>Made with ⚡ by Antigravity AI</p>
+            <p style="margin-top: 0.5rem; font-size: 0.875rem;">
+                <a href="README.md" style="color: #00D9FF; text-decoration: none;">Documentation</a> •
+                <a href="QUICKSTART.md" style="color: #00D9FF; text-decoration: none;">Quick Start</a>
+            </p>
+        </div>
+    </div>
+</body>
+
+</html>

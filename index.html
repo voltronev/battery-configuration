@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Battery Pack Designer - Custom Configuration Dashboard</title>
+    <meta name="description"
+        content="Professional battery pack customization tool with real-time connection diagrams and configuration validation">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- Background Effects -->
+    <div class="background-grid"></div>
+    <div class="gradient-orb orb-1"></div>
+    <div class="gradient-orb orb-2"></div>
+    <div class="gradient-orb orb-3"></div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="4" y="8" width="28" height="24" rx="3" stroke="url(#logo-gradient)" stroke-width="2.5" />
+                    <rect x="32" y="16" width="4" height="8" rx="1" fill="url(#logo-gradient)" />
+                    <path d="M12 16L16 20L24 12" stroke="url(#logo-gradient)" stroke-width="2.5" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <defs>
+                        <linearGradient id="logo-gradient" x1="4" y1="8" x2="36" y2="32" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#00D9FF" />
+                            <stop offset="1" stop-color="#7B61FF" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <div>
+                    <h1>Battery Pack Designer</h1>
+                    <p class="subtitle">Professional Configuration Tool</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="btn-icon" id="save-config" title="Save Configuration">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                        <polyline points="17 21 17 13 7 13 7 21" />
+                        <polyline points="7 3 7 8 15 8" />
+                    </svg>
+                </button>
+                <button class="btn-icon" id="export-config" title="Export Configuration">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Left Panel - Configuration -->
+            <div class="config-panel">
+                <div class="panel-header">
+                    <h2>Configuration</h2>
+                    <div class="step-indicator">
+                        <span class="step active" data-step="1">1</span>
+                        <span class="step-line"></span>
+                        <span class="step" data-step="2">2</span>
+                        <span class="step-line"></span>
+                        <span class="step" data-step="3">3</span>
+                    </div>
+                </div>
+
+                <!-- Step 1: Cell Type -->
+                <div class="config-section active" data-section="1">
+                    <h3>Step 1: Cell Configuration</h3>
+
+                    <div class="form-group">
+                        <label for="cell-type">Cell Type</label>
+                        <select id="cell-type" class="input-field">
+                            <option value="18650">18650 Li-ion</option>
+                            <option value="21700">21700 Li-ion</option>
+                            <option value="26650">26650 LiFePO4</option>
+                            <option value="32650">32650 LiFePO4</option>
+                            <option value="pouch">Pouch Cell</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cell-voltage">Cell Nominal Voltage (V)</label>
+                        <input type="number" id="cell-voltage" class="input-field" value="3.7" step="0.1" min="1"
+                            max="5">
+                        <span class="input-hint">Typical: 3.7V (Li-ion), 3.2V (LiFePO4)</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cell-capacity">Cell Capacity (mAh)</label>
+                        <input type="number" id="cell-capacity" class="input-field" value="3000" step="100" min="100">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cell-count">Number of Cells</label>
+                        <input type="number" id="cell-count" class="input-field" value="4" step="1" min="1" max="100">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cell Dimensions (mm)</label>
+                        <div class="dimension-inputs">
+                            <div class="dimension-field">
+                                <label for="cell-length">Length</label>
+                                <input type="number" id="cell-length" class="input-field" value="65" step="0.1" min="1">
+                            </div>
+                            <div class="dimension-field">
+                                <label for="cell-diameter">Diameter</label>
+                                <input type="number" id="cell-diameter" class="input-field" value="18" step="0.1"
+                                    min="1">
+                            </div>
+                        </div>
+                        <span class="input-hint">18650: 65mm × 18mm | 21700: 70mm × 21mm</span>
+                    </div>
+                </div>
+
+                <!-- Step 2: Pack Configuration -->
+                <div class="config-section" data-section="2">
+                    <h3>Step 2: Pack Configuration</h3>
+
+                    <div class="form-group">
+                        <label for="series-cells">Cells in Series (S)</label>
+                        <input type="number" id="series-cells" class="input-field" value="2" step="1" min="1">
+                        <span class="input-hint">Determines pack voltage</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="parallel-cells">Cells in Parallel (P)</label>
+                        <input type="number" id="parallel-cells" class="input-field" value="2" step="1" min="1">
+                        <span class="input-hint">Determines pack capacity</span>
+                    </div>
+
+                    <div class="info-card">
+                        <div class="info-row">
+                            <span>Pack Configuration:</span>
+                            <strong id="pack-config">2S2P</strong>
+                        </div>
+                        <div class="info-row">
+                            <span>Total Cells Required:</span>
+                            <strong id="total-cells">4</strong>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Connection Type</label>
+                        <div class="radio-group">
+                            <label class="radio-option">
+                                <input type="radio" name="connection-type" value="series" checked>
+                                <span class="radio-custom"></span>
+                                <div>
+                                    <strong>Series First</strong>
+                                    <small>Connect in series, then parallel</small>
+                                </div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="connection-type" value="parallel">
+                                <span class="radio-custom"></span>
+                                <div>
+                                    <strong>Parallel First</strong>
+                                    <small>Connect in parallel, then series</small>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Protection & Output -->
+                <div class="config-section" data-section="3">
+                    <h3>Step 3: Protection & Output</h3>
+
+                    <div class="form-group">
+                        <label class="checkbox-option">
+                            <input type="checkbox" id="bms-protection" checked>
+                            <span class="checkbox-custom"></span>
+                            <div>
+                                <strong>BMS Protection</strong>
+                                <small>Battery Management System for safety</small>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="max-discharge">Max Discharge Current (A)</label>
+                        <input type="number" id="max-discharge" class="input-field" value="30" step="1" min="1">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="output-connector">Output Connector</label>
+                        <select id="output-connector" class="input-field">
+                            <option value="xt60">XT60</option>
+                            <option value="xt90">XT90</option>
+                            <option value="anderson">Anderson PowerPole</option>
+                            <option value="deans">Deans/T-Plug</option>
+                            <option value="jst">JST</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="balance-connector">Balance Connector</label>
+                        <select id="balance-connector" class="input-field">
+                            <option value="jst-xh">JST-XH</option>
+                            <option value="jst-ph">JST-PH</option>
+                            <option value="molex">Molex</option>
+                            <option value="none">None</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Navigation Buttons -->
+                <div class="nav-buttons">
+                    <button class="btn btn-secondary" id="prev-btn" style="display: none;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                        Previous
+                    </button>
+                    <button class="btn btn-primary" id="next-btn">
+                        Next
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </button>
+                    <button class="btn btn-success" id="generate-btn" style="display: none;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        Generate Diagram
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Panel - Visualization -->
+            <div class="visualization-panel">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon voltage">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">Pack Voltage</span>
+                            <span class="stat-value" id="stat-voltage">7.4V</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon capacity">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <rect x="5" y="6" width="14" height="14" rx="2" />
+                                <path d="M9 10h6M9 14h6" />
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">Pack Capacity</span>
+                            <span class="stat-value" id="stat-capacity">6000mAh</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon energy">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <circle cx="12" cy="12" r="10" />
+                                <path d="M12 6v6l4 2" />
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">Total Energy</span>
+                            <span class="stat-value" id="stat-energy">44.4Wh</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon power">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M18.36 6.64a9 9 0 1 1-12.73 0" />
+                                <line x1="12" y1="2" x2="12" y2="12" />
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">Max Power</span>
+                            <span class="stat-value" id="stat-power">222W</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connection Diagram -->
+                <div class="diagram-container">
+                    <div class="diagram-header">
+                        <h3>Connection Diagram</h3>
+                        <div class="diagram-controls">
+                            <button class="btn-icon" id="zoom-in" title="Zoom In">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <circle cx="11" cy="11" r="8" />
+                                    <path d="M21 21l-4.35-4.35" />
+                                    <line x1="11" y1="8" x2="11" y2="14" />
+                                    <line x1="8" y1="11" x2="14" y2="11" />
+                                </svg>
+                            </button>
+                            <button class="btn-icon" id="zoom-out" title="Zoom Out">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <circle cx="11" cy="11" r="8" />
+                                    <path d="M21 21l-4.35-4.35" />
+                                    <line x1="8" y1="11" x2="14" y2="11" />
+                                </svg>
+                            </button>
+                            <button class="btn-icon" id="reset-view" title="Reset View">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                                    <path d="M21 3v5h-5" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="diagram-canvas" id="diagram-canvas">
+                        <div class="diagram-placeholder">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.5">
+                                <rect x="2" y="6" width="20" height="12" rx="2" />
+                                <rect x="22" y="10" width="2" height="4" rx="0.5" />
+                                <path d="M8 10h8M8 14h8" stroke-dasharray="2 2" />
+                            </svg>
+                            <p>Configure your battery pack to see the connection diagram</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Specifications -->
+                <div class="specifications">
+                    <h3>Pack Specifications</h3>
+                    <div class="spec-grid">
+                        <div class="spec-item">
+                            <span class="spec-label">Configuration</span>
+                            <span class="spec-value" id="spec-config">2S2P</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Nominal Voltage</span>
+                            <span class="spec-value" id="spec-nominal">7.4V</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Max Voltage</span>
+                            <span class="spec-value" id="spec-max-voltage">8.4V</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Min Voltage</span>
+                            <span class="spec-value" id="spec-min-voltage">6.0V</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Total Capacity</span>
+                            <span class="spec-value" id="spec-capacity">6000mAh</span>
+                        </div>
+                        <div class="spec-item">
+                            <span class="spec-label">Max Discharge</span>
+                            <span class="spec-value" id="spec-discharge">30A</span>
+                        </div>
+                        <div class="spec-item spec-highlight">
+                            <span class="spec-label">Pack Dimensions</span>
+                            <span class="spec-value" id="spec-dimensions">120×36×65mm</span>
+                        </div>
+                        <div class="spec-item spec-highlight">
+                            <span class="spec-label">Pack Volume</span>
+                            <span class="spec-value" id="spec-volume">281cm³</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
