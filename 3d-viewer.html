@@ -836,150 +836,231 @@
             const sp = new THREE.Sprite(mat); sp.scale.set(size * 4, size, 1); sp.position.set(x, y, z); g.add(sp);
         }
 
-        // ── Make one cylindrical cell ────────────────────────────────
+        // ── Make one cylindrical cell (realistic) ────────────────────
         function makeCell(g, x, y, z, d, l, color) {
-            const r = d / 2, gr = new THREE.Group();
-            // Body
-            const bodyGeo = new THREE.CylinderGeometry(r, r, l - 4, 24);
-            addMesh(bodyGeo, mkCyl(r, r, l - 4, 24, color, 0.06), gr, 0, 0, 0);
-            // Dark label wrap
-            const wrapGeo = new THREE.CylinderGeometry(r + 0.3, r + 0.3, l * 0.55, 24);
-            addMesh(wrapGeo, new THREE.MeshStandardMaterial({ color: 0x0d1117, metalness: 0.1, roughness: 0.9, transparent: true, opacity: 0.88 }), gr, 0, 0, 0);
-            // Positive (green cap top)
-            const posGeo = new THREE.CylinderGeometry(r * 0.4, r * 0.4, 2.5, 12);
-            addMesh(posGeo, new THREE.MeshPhysicalMaterial({ color: 0x00E676, metalness: 0.9, roughness: 0.1 }), gr, 0, l / 2, 0);
-            // Negative (red ring bottom)
-            const negGeo = new THREE.CylinderGeometry(r - 1, r - 1, 2, 24);
-            addMesh(negGeo, new THREE.MeshPhysicalMaterial({ color: 0xFF5252, metalness: 0.9, roughness: 0.1 }), gr, 0, -l / 2, 0);
-            // Ring glow
-            const ringGeo = new THREE.TorusGeometry(r + 0.6, 0.7, 8, 20);
-            const ringM = new THREE.Mesh(ringGeo, new THREE.MeshStandardMaterial({ color: new THREE.Color(color), emissive: new THREE.Color(color), emissiveIntensity: 0.4 }));
-            ringM.rotation.x = Math.PI / 2; ringM.position.y = l * 0.33; gr.add(ringM);
-            gr.position.set(x, y, z); g.add(gr);
+            const r = d / 2;
+            const gr = new THREE.Group();
+
+            // Main body — metallic cylinder with correct material
+            const bodyGeo = new THREE.CylinderGeometry(r, r, l, 32);
+            const bodyMat = new THREE.MeshPhysicalMaterial({
+                color: new THREE.Color(color), metalness: 0.55, roughness: 0.28,
+                emissive: new THREE.Color(color), emissiveIntensity: 0.04,
+                clearcoat: 0.6, clearcoatRoughness: 0.2
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.castShadow = true; gr.add(body);
+
+            // Label wrap (dark band around middle)
+            const wrapGeo = new THREE.CylinderGeometry(r + 0.25, r + 0.25, l * 0.5, 32);
+            const wrapMat = new THREE.MeshStandardMaterial({ color: 0x0a0f14, metalness: 0, roughness: 0.95, transparent: true, opacity: 0.82 });
+            gr.add(new THREE.Mesh(wrapGeo, wrapMat));
+
+            // Groove ring (realistic cell detail)
+            const grooveGeo = new THREE.TorusGeometry(r - 0.5, 0.6, 6, 32);
+            const grooveMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.3, roughness: 0.7 });
+            const groove = new THREE.Mesh(grooveGeo, grooveMat);
+            groove.rotation.x = Math.PI / 2;
+            groove.position.y = l * 0.38;
+            gr.add(groove);
+
+            // Shine stripe
+            const stripeGeo = new THREE.CylinderGeometry(r + 0.28, r + 0.28, l * 0.08, 8);
+            const stripeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.08, roughness: 0.5 });
+            const stripe = new THREE.Mesh(stripeGeo, stripeMat);
+            stripe.position.y = l * 0.15;
+            gr.add(stripe);
+
+            // Positive terminal cap (bright silver nub)
+            const capGeo = new THREE.CylinderGeometry(r * 0.38, r * 0.45, 2.5, 16);
+            const capMat = new THREE.MeshPhysicalMaterial({ color: 0xcccccc, metalness: 1.0, roughness: 0.05 });
+            const cap = new THREE.Mesh(capGeo, capMat);
+            cap.position.y = l / 2 + 1.3; gr.add(cap);
+            // Positive nub top disc
+            const nubGeo = new THREE.CylinderGeometry(r * 0.28, r * 0.28, 1, 12);
+            const nubMat = new THREE.MeshPhysicalMaterial({ color: 0xe0e0e0, metalness: 1.0, roughness: 0.03 });
+            const nub = new THREE.Mesh(nubGeo, nubMat);
+            nub.position.y = l / 2 + 2.8; gr.add(nub);
+
+            // Negative flat base
+            const negGeo = new THREE.CylinderGeometry(r, r, 1.5, 32);
+            const negMat = new THREE.MeshPhysicalMaterial({ color: 0x888888, metalness: 0.9, roughness: 0.15 });
+            const neg = new THREE.Mesh(negGeo, negMat);
+            neg.position.y = -l / 2 - 0.75; gr.add(neg);
+
+            gr.position.set(x, y, z);
+            g.add(gr);
         }
 
         // ── Build Connected (Wired) Pack ─────────────────────────────
         function buildConnectedPack() {
             const S = parseInt(gv('c-s', 2)), P = parseInt(gv('c-p', 2));
-            const d = gv('c-d', 18), l = gv('c-l', 65), gap = gv('c-gap', 1), bms = document.getElementById('c-bms').value === '1';
-            const pitch = d + gap;
+            const d = parseFloat(gv('c-d', 18)), l = parseFloat(gv('c-l', 65));
+            const gap = parseFloat(gv('c-gap', 1));
+            const bms = document.getElementById('c-bms').value === '1';
+            const pitch = d + gap * 2;
             const g = new THREE.Group();
             const halfZ = (P - 1) * pitch / 2, halfX = (S - 1) * pitch / 2;
+            const halfL = l / 2;
 
-            // Draw cells in S×P grid
+            // ── Cells grid ──────────────────────────────────────────
             for (let s = 0; s < S; s++) {
                 for (let p = 0; p < P; p++) {
                     makeCell(g, s * pitch - halfX, 0, p * pitch - halfZ, d, l, cellColor);
                 }
-                // Top bus bar (red strip)
-                box(g, d, 3, P * pitch, '#FF3333', s * pitch - halfX, l / 2 + 2, 0);
-                // Bottom bus bar (dark strip)
-                box(g, d, 3, P * pitch, '#222222', s * pitch - halfX, -l / 2 - 2, 0);
-                // Nickel strip series connection (from top of s to bottom of s+1)
-                if (s < S - 1) {
-                    const x1 = s * pitch - halfX + d / 2, x2 = (s + 1) * pitch - halfX - d / 2;
-                    // Bridge strip
-                    box(g, x2 - x1 + gap, 3, P * pitch * 0.6, '#CC8800', (x1 + x2) / 2, l / 2 + 5, 0);
-                    // Downward connector
-                    tube(g, (x1 + x2) / 2, l / 2 + 5, 0, (x1 + x2) / 2, -l / 2 - 5, 0, '#CC8800', 2);
+            }
+
+            // ── Cell holder frames (top + bottom) ──────────────────
+            // Dark plastic frame — two horizontal slabs with holes punched
+            const frameThk = 5, frameW = S * pitch + 4, frameD = P * pitch + 4;
+            const frameMat = new THREE.MeshPhysicalMaterial({ color: 0x1a1a1a, metalness: 0.05, roughness: 0.9 });
+            // Top frame plate
+            const topFrameGeo = new THREE.BoxGeometry(frameW, frameThk, frameD);
+            const topFrame = new THREE.Mesh(topFrameGeo, frameMat);
+            topFrame.position.set(-halfX + (S - 1) * pitch / 2, halfL + frameThk / 2 + 1, -halfZ + (P - 1) * pitch / 2);
+            g.add(topFrame);
+            // Bottom frame plate
+            const botFrame = new THREE.Mesh(topFrameGeo, frameMat);
+            botFrame.position.set(-halfX + (S - 1) * pitch / 2, -halfL - frameThk / 2 - 1, -halfZ + (P - 1) * pitch / 2);
+            g.add(botFrame);
+
+            // Cell holder holes (rings showing through the frame)
+            for (let s = 0; s < S; s++) {
+                for (let p = 0; p < P; p++) {
+                    const cx = s * pitch - halfX, cz = p * pitch - halfZ;
+                    const holeGeo = new THREE.CylinderGeometry(d / 2 - 0.5, d / 2 - 0.5, frameThk + 2, 20);
+                    const holeMat = new THREE.MeshPhysicalMaterial({ color: 0x0a0a0a, metalness: 0, roughness: 1 });
+                    const topH = new THREE.Mesh(holeGeo, holeMat);
+                    topH.position.set(cx, halfL + frameThk / 2 + 1, cz); g.add(topH);
+                    const botH = new THREE.Mesh(holeGeo, holeMat);
+                    botH.position.set(cx, -halfL - frameThk / 2 - 1, cz); g.add(botH);
+                    // Frame spoke dividers (cross pattern between holes)
+                    if (s < S - 1) {
+                        const spokW = pitch - d, spokGeo = new THREE.BoxGeometry(spokW, frameThk + 0.5, 3);
+                        const sk = new THREE.Mesh(spokGeo, frameMat);
+                        sk.position.set(cx + d / 2 + spokW / 2, halfL + frameThk / 2 + 1, cz); g.add(sk);
+                        const sb = sk.clone(); sb.position.y = -halfL - frameThk / 2 - 1; g.add(sb);
+                    }
                 }
             }
 
-            // Balance tap dots at each series junction
-            const balTaps = [];
-            // B0 at col0 bottom
-            balTaps.push({ x: -halfX, y: -l / 2 - 3, z: -halfZ });
-            for (let s = 0; s < S - 1; s++) {
-                const jx = (s * pitch - halfX + d / 2 + ((s + 1) * pitch - halfX - d / 2)) / 2;
-                balTaps.push({ x: jx, y: l / 2 + 6, z: -halfZ - 2 });
+            // ── Flat nickel bus strips (top: positive, bottom: negative) ──
+            const stripH = 3, stripD = P * pitch;
+            const posStripMat = new THREE.MeshPhysicalMaterial({ color: 0xCD9B1D, metalness: 0.92, roughness: 0.12 });
+            const negStripMat = new THREE.MeshPhysicalMaterial({ color: 0x444444, metalness: 0.85, roughness: 0.2 });
+            for (let s = 0; s < S; s++) {
+                const sx = s * pitch - halfX;
+                // Top positive strip per column
+                const tp = new THREE.Mesh(new THREE.BoxGeometry(d, stripH, stripD), posStripMat);
+                tp.position.set(sx, halfL + frameThk + stripH / 2 + 1, -halfZ + (P - 1) * pitch / 2);
+                g.add(tp);
+                // Weld dots on strip
+                for (let p = 0; p < P; p++) {
+                    const wld = new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 1, 8),
+                        new THREE.MeshPhysicalMaterial({ color: 0xE8C060, metalness: 0.95, roughness: 0.05 }));
+                    wld.position.set(sx, halfL + frameThk + stripH + 2, p * pitch - halfZ);
+                    g.add(wld);
+                }
+                // Bottom negative strip per column
+                const bn = new THREE.Mesh(new THREE.BoxGeometry(d, stripH, stripD), negStripMat);
+                bn.position.set(sx, -halfL - frameThk - stripH / 2 - 1, -halfZ + (P - 1) * pitch / 2);
+                g.add(bn);
             }
-            // Bs at last col top
-            balTaps.push({ x: (S - 1) * pitch - halfX, y: l / 2 + 3, z: -halfZ });
-            balTaps.forEach(t => {
-                const spGeo = new THREE.SphereGeometry(2.5, 8, 8);
-                const sp = new THREE.Mesh(spGeo, new THREE.MeshPhysicalMaterial({ color: 0x00E676, emissive: 0x00E676, emissiveIntensity: 0.5 }));
-                sp.position.set(t.x, t.y, t.z); g.add(sp);
-            });
+            // Series connection strips (alternating top/bottom bridges)
+            const bridgeMat = new THREE.MeshPhysicalMaterial({ color: 0xCC2200, metalness: 0.85, roughness: 0.15 });
+            for (let s = 0; s < S - 1; s++) {
+                const x1 = s * pitch - halfX, x2 = (s + 1) * pitch - halfX;
+                const bw = x2 - x1, bh = 3.5;
+                const bridgeGeo = new THREE.BoxGeometry(bw, bh, stripD * 0.55);
+                const br = new THREE.Mesh(bridgeGeo, bridgeMat);
+                br.position.set((x1 + x2) / 2, halfL + frameThk + bh / 2 + 2, -(P - 1) * pitch / 6);
+                g.add(br);
+            }
 
-            const bmsX = halfX + d + 50;
+            // ── BMS mounted on TOP of pack (reference image style) ──
+            const topSurfY = halfL + frameThk + stripH + 8;
+            const bmsW = Math.max(60, S * pitch * 0.65), bmsH_3d = 15, bmsD = Math.max(45, P * pitch * 0.7);
+            const bmsPosX = -(S - 1) * pitch / 4, bmsPosZ = 0;
 
             if (bms) {
-                const bmsH = Math.max(80, S * 14 + 40);
-                const bmsW = 70, bmsD = 50;
-                const bmsY = 0;
-                // BMS box
-                const bmsGeo = new THREE.BoxGeometry(bmsW, bmsH, bmsD);
-                const bmsMat = new THREE.MeshPhysicalMaterial({ color: 0x2a3a2a, metalness: 0.3, roughness: 0.4, emissive: 0x00E676, emissiveIntensity: 0.04 });
-                const bmsM = new THREE.Mesh(bmsGeo, bmsMat); bmsM.position.set(bmsX + bmsW / 2, bmsY, 0); g.add(bmsM);
-                // BMS edge highlight
-                const edgeMat2 = new THREE.LineBasicMaterial({ color: 0x00E676, transparent: true, opacity: 0.6 });
-                const bmsEdge = new THREE.LineSegments(new THREE.EdgesGeometry(bmsGeo), edgeMat2);
-                bmsEdge.position.set(bmsX + bmsW / 2, bmsY, 0);
-                g.add(bmsEdge);
-                // BMS label
-                label3d(g, 'BMS', bmsX + bmsW / 2, bmsY + bmsH / 2 + 10, 0, '#FFEB3B', 10);
-
-                // Balance port (green box on left face of BMS)
-                const balPortH = Math.min(balTaps.length * 10, bmsH * 0.6);
-                box(g, 4, balPortH, 8, '#00E676', bmsX - 2, bmsY, 0);
-                label3d(g, 'BAL', bmsX - 16, bmsY + balPortH / 2 + 8, 0, '#00E676', 6);
-                // Balance wires from taps to balance port
-                balTaps.forEach((t, i) => {
-                    const ty = bmsY - balPortH / 2 + (i / (Math.max(balTaps.length - 1, 1))) * balPortH;
-                    tube(g, t.x, t.y, t.z, bmsX - 2, ty, 0, '#00E676', 0.8);
+                // BMS enclosure (orange-brown like reference image 1)
+                const bmsGeo = new THREE.BoxGeometry(bmsW, bmsH_3d, bmsD);
+                const bmsMat = new THREE.MeshPhysicalMaterial({
+                    color: 0x964B00, metalness: 0.15, roughness: 0.55,
+                    emissive: 0x3a1a00, emissiveIntensity: 0.12
                 });
+                const bmsM = new THREE.Mesh(bmsGeo, bmsMat);
+                bmsM.position.set(bmsPosX, topSurfY + bmsH_3d / 2, bmsPosZ);
+                bmsM.castShadow = true; g.add(bmsM);
+                // BMS edge lines
+                const bmsEdge2 = new THREE.LineSegments(new THREE.EdgesGeometry(bmsGeo),
+                    new THREE.LineBasicMaterial({ color: 0xCC6600, opacity: 0.7, transparent: true }));
+                bmsEdge2.position.copy(bmsM.position); g.add(bmsEdge2);
 
-                // Main power wires B- (from col0 bottom to BMS bottom-left)
-                tube(g, -halfX, -l / 2 - 2, 0, bmsX, -bmsH / 2 + 8, 0, '#333333', 3.5);
-                // B+ (from last col top to BMS bottom-right)
-                tube(g, (S - 1) * pitch - halfX, l / 2 + 2, 0, bmsX + bmsW, -bmsH / 2 + 20, 0, '#CC2222', 3.5);
+                // Connector block on BMS (like DALY connector reference)
+                const connGeo = new THREE.BoxGeometry(20, 8, bmsD * 0.6);
+                const connMat = new THREE.MeshPhysicalMaterial({ color: 0x1a1a1a, metalness: 0.5, roughness: 0.4 });
+                const conn = new THREE.Mesh(connGeo, connMat);
+                conn.position.set(bmsPosX + bmsW / 2 - 10, topSurfY + bmsH_3d + 4, 0);
+                g.add(conn);
+                // Connector pins
+                for (let i = 0; i < 4; i++) {
+                    const pinGeo = new THREE.CylinderGeometry(1.5, 1.5, 5, 8);
+                    const pin = new THREE.Mesh(pinGeo, new THREE.MeshPhysicalMaterial({ color: 0xaaaaaa, metalness: 1, roughness: 0.05 }));
+                    pin.position.set(bmsPosX + bmsW / 2 - 10, topSurfY + bmsH_3d + 9, (i - 1.5) * 7);
+                    g.add(pin);
+                }
 
-                // BMS Terminals (circles at bottom)
-                const terms = [{ lbl: 'B-', c: '#333' }, { lbl: 'P-', c: '#222' }, { lbl: 'PC-', c: '#222' }, { lbl: 'B+', c: '#CC2222' }];
-                terms.forEach((t, i) => {
-                    const tx = bmsX + bmsW / 4 * (i) - bmsW / 8;
-                    const tGeo = new THREE.CylinderGeometry(4, 4, 4, 12);
-                    const tM = new THREE.Mesh(tGeo, new THREE.MeshPhysicalMaterial({ color: new THREE.Color(t.c === '#333' || t.c === '#222' ? '#444' : t.c), metalness: 0.9, roughness: 0.1 }));
-                    tM.position.set(tx, -bmsH / 2 - 2, 0); g.add(tM);
-                    label3d(g, t.lbl, tx, -bmsH / 2 - 16, 0, t.c === '#CC2222' ? '#FF5252' : '#aaaaaa', 5);
-                });
-
-                // Load connector (blue box) to right of BMS
-                const lx = bmsX + bmsW + 20;
-                box(g, 30, 18, 25, '#1a3a5c', lx + 15, -bmsH / 2 + 30, 0);
-                label3d(g, 'LOAD', lx + 15, -bmsH / 2 + 30, 0, '#2196F3', 6);
-                tube(g, bmsX + bmsW, -bmsH / 2 + 8, 0, lx, -bmsH / 2 + 30, 0, '#222', 2.5);
-                tube(g, bmsX + bmsW, -bmsH / 2 + 20, 0, lx, -bmsH / 2 + 25, 0, '#CC2222', 2.5);
-
-                // Charger connector (orange box)
-                box(g, 30, 18, 25, '#3a2a0a', lx + 15, -bmsH / 2 + 5, 0);
-                label3d(g, 'CHARGER', lx + 15, -bmsH / 2 + 5, 0, '#FF9800', 6);
-                tube(g, bmsX + bmsW, -bmsH / 2 + 8, 0, lx, -bmsH / 2 + 8, 0, '#222', 2.5);
-                tube(g, bmsX + bmsW, -bmsH / 2 + 20, 0, lx, -bmsH / 2 + 3, 0, '#CC2222', 2.5);
+                // BMS wire to positive terminal (B+)
+                const bpx = (S - 1) * pitch - halfX;
+                tube(g, bpx, halfL + frameThk, 0, bpx, topSurfY, 0, '#CC2222', 3);
+                tube(g, bpx, topSurfY, 0, bmsPosX + bmsW / 2, topSurfY, 0, '#CC2222', 3);
+                // BMS wire B-
+                tube(g, -halfX, halfL + frameThk, 0, -halfX, topSurfY, 0, '#222222', 3);
+                tube(g, -halfX, topSurfY, 0, bmsPosX - bmsW / 2, topSurfY, 0, '#222222', 3);
+                // Balance cable (green flat ribbon from front side)
+                const balCableGeo = new THREE.BoxGeometry(1.5, bmsD * 0.7, 6);
+                const balCableMat = new THREE.MeshStandardMaterial({ color: 0x1B5E20, roughness: 0.8 });
+                const balCable = new THREE.Mesh(balCableGeo, balCableMat);
+                balCable.position.set(bmsPosX - bmsW / 2, topSurfY + bmsH_3d / 2, -halfZ - 8);
+                g.add(balCable);
+                label3d(g, 'BMS', bmsPosX, topSurfY + bmsH_3d + 14, 0, '#FFEB3B', 10);
             }
 
-            // Pack housing (transparent shell)
-            const pw = (S - 1) * pitch + d + 10, pd = (P - 1) * pitch + d + 10;
-            const houseGeo = new THREE.BoxGeometry(pw, l + 12, pd);
-            const houseMat = new THREE.MeshPhysicalMaterial({ color: 0x0d1f33, metalness: 0.2, roughness: 0.5, transparent: true, opacity: 0.18, side: THREE.DoubleSide });
-            const house = new THREE.Mesh(houseGeo, houseMat); house.position.set(-halfX + (pw - d) / 2 - d / 2, 0, 0); g.add(house);
-            const edgeMat = new THREE.LineBasicMaterial({ color: 0x00D9FF, transparent: true, opacity: 0.25 });
-            const edgeLines = new THREE.LineSegments(new THREE.EdgesGeometry(houseGeo), edgeMat);
-            edgeLines.position.copy(house.position); g.add(edgeLines);
+            // ── Enclosure box (rounded corners, semi-transparent) ───
+            const packW2 = S * pitch + d + 4, packD2 = P * pitch + d + 4;
+            const enclosureH = l + frameThk * 2 + 20;
+            const enc = box(g, packW2, enclosureH, packD2, '#0d1520', 0, 0, 0, 0.12);
+            const encEdge = new THREE.LineSegments(
+                new THREE.EdgesGeometry(new THREE.BoxGeometry(packW2, enclosureH, packD2)),
+                new THREE.LineBasicMaterial({ color: 0x00D9FF, transparent: true, opacity: 0.3 })
+            );
+            g.add(encEdge);
+            // Corner mounting nubs (like reference image)
+            const nubGeo2 = new THREE.CylinderGeometry(4, 4, 6, 12);
+            const nubMat2 = new THREE.MeshPhysicalMaterial({ color: 0x111111, metalness: 0.3, roughness: 0.7 });
+            [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx2, sz2]) => {
+                const n = new THREE.Mesh(nubGeo2, nubMat2);
+                n.position.set(sx2 * (packW2 / 2 - 5), -enclosureH / 2 - 3, sz2 * (packD2 / 2 - 5));
+                g.add(n);
+            });
 
-            const totalCells = S * P;
-            const v = (gv('c-d', 18) * 0 + parseFloat(UP.get('voltage') || 3.7)) * S;
-            const cap = (parseInt(UP.get('capacity') || 3000) * P) / 1000;
-            document.getElementById('st-cells').textContent = totalCells;
+            // ── Stats panel ────────────────────────────────────────
+            const cTotal = S * P;
+            const v = parseFloat(UP.get('voltage') || 3.7);
+            const cap = parseInt(UP.get('capacity') || 3000);
+            document.getElementById('st-cells').textContent = cTotal;
             document.getElementById('st-cfg').textContent = `${S}S${P}P`;
-            document.getElementById('st-v').textContent = `${(parseFloat(UP.get('voltage') || 3.7) * S).toFixed(1)}V`;
-            document.getElementById('st-cap').textContent = `${parseInt(UP.get('capacity') || 3000) * P}mAh`;
-            document.getElementById('st-e').textContent = `${((parseFloat(UP.get('voltage') || 3.7) * S) * (parseInt(UP.get('capacity') || 3000) * P) / 1000).toFixed(1)}Wh`;
-            document.getElementById('st-dims').textContent = `${pw.toFixed(0)}×${pd.toFixed(0)}×${(l + 12).toFixed(0)}mm`;
-            document.getElementById('st-fill').textContent = `~${Math.round(totalCells * Math.PI * (d / 2) ** 2 / (pw * pd) * 100)}%`;
-            document.getElementById('statusbadge').innerHTML = `<span>${totalCells} cells</span> · ${S}S${P}P${bms ? ' · BMS' : ''}`;
+            document.getElementById('st-v').textContent = `${(v * S).toFixed(1)}V`;
+            document.getElementById('st-cap').textContent = `${cap * P}mAh`;
+            document.getElementById('st-e').textContent = `${((v * S) * (cap * P) / 1000).toFixed(1)}Wh`;
+            document.getElementById('st-dims').textContent = `${packW2.toFixed(0)}×${packD2.toFixed(0)}×${enclosureH.toFixed(0)}mm`;
+            document.getElementById('st-fill').textContent = `~${Math.round(cTotal * Math.PI * (d / 2) ** 2 / (packW2 * packD2) * 100)}%`;
+            document.getElementById('statusbadge').innerHTML = `<span>${cTotal} cells</span> · ${S}S${P}P${bms ? ' · BMS' : ''}`;
             return g;
         }
+
+
 
         // ── Build Shape Pack ────────────────────────────────────────
         function buildShapePack() {

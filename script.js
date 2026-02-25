@@ -258,334 +258,182 @@ function updateCalculations() {
 }
 
 // ===== Professional Diagram Generation =====
+function mkSVG(tag, attrs, parent) {
+    const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+    if (parent) parent.appendChild(el);
+    return el;
+}
+function svTxt(parent, x, y, text, col, size, weight, anchor) {
+    const t = mkSVG('text', { x, y, fill: col || '#fff', 'font-size': size || 11, 'font-weight': weight || '600', 'font-family': 'Inter,sans-serif', 'text-anchor': anchor || 'middle', 'dominant-baseline': 'middle' }, parent);
+    t.textContent = text; return t;
+}
+function wLine(parent, x1, y1, x2, y2, col, w, dash) {
+    return mkSVG('line', { x1, y1, x2, y2, stroke: col, 'stroke-width': w || 3, 'stroke-linecap': 'round', 'stroke-dasharray': dash || '' }, parent);
+}
+function wPath(parent, d, col, w, dash) {
+    return mkSVG('path', { d, stroke: col, 'stroke-width': w || 3, fill: 'none', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-dasharray': dash || '' }, parent);
+}
+
 function generateDiagram() {
     const canvas = document.getElementById('diagram-canvas');
     canvas.innerHTML = '';
+    const S = config.seriesCells, P = config.parallelCells, hasBMS = config.bmsProtection;
+    const CW = 54, CH = 88, CRX = 10, CGAP = 18, RGAP = 10, PAD = 55, TPAD = 65;
+    const packW = S * CW + (S - 1) * CGAP, packH = P * CH + (P - 1) * RGAP;
+    const packX = PAD + 55, packY = TPAD + 28;
+    const BW = 155, BH = Math.max(160, packH * 0.9);
+    const BX = packX + packW + 130, BY = packY + packH / 2 - BH / 2;
+    const LX = BX + BW + 65, LW = 95, LH = 52, LY = BY + 20, CY2 = LY + LH + 28;
+    const TW = LX + LW + PAD + 10, TH = packY + packH + 110;
 
-    const cellWidth = 45;
-    const cellHeight = 80;
-    const cellSpacingX = 15;
-    const cellSpacingY = 12;
-    const bmsWidth = 160;
-    const bmsHeight = Math.max(200, config.seriesCells * 15 + 80);
-    const margin = 60;
+    const svg = mkSVG('svg', { width: '100%', height: '100%', viewBox: `0 0 ${TW} ${TH}`, preserveAspectRatio: 'xMidYMid meet', style: 'display:block' }, canvas);
+    const defs = mkSVG('defs', {}, svg);
 
-    const cellAreaWidth = config.seriesCells * cellWidth + (config.seriesCells - 1) * cellSpacingX;
-    const cellAreaHeight = config.parallelCells * cellHeight + (config.parallelCells - 1) * cellSpacingY;
+    // Gradients
+    const cg = mkSVG('linearGradient', { id: 'cg', x1: '0%', y1: '0%', x2: '100%', y2: '0%' }, defs);
+    [['0%', '#2d5a2d'], ['35%', '#4CAF50'], ['65%', '#4CAF50'], ['100%', '#2d5a2d']].forEach(([o, c]) => { const s = mkSVG('stop', { offset: o }, cg); s.style.stopColor = c; });
+    const bg2 = mkSVG('linearGradient', { id: 'bg2', x1: '0%', y1: '0%', x2: '0%', y2: '100%' }, defs);
+    [['0%', '#c0392b'], ['50%', '#e74c3c'], ['100%', '#922b21']].forEach(([o, c]) => { const s = mkSVG('stop', { offset: o }, bg2); s.style.stopColor = c; });
+    const ng = mkSVG('linearGradient', { id: 'ng', x1: '0%', y1: '0%', x2: '0%', y2: '100%' }, defs);
+    [['0%', '#CDAA00'], ['50%', '#B8860B'], ['100%', '#7B5800']].forEach(([o, c]) => { const s = mkSVG('stop', { offset: o }, ng); s.style.stopColor = c; });
+    const flt = mkSVG('filter', { id: 'sh', x: '-20%', y: '-20%', width: '140%', height: '140%' }, defs);
+    mkSVG('feDropShadow', { dx: 1, dy: 2, stdDeviation: 3, 'flood-color': 'rgba(0,0,0,0.7)' }, flt);
 
-    const totalWidth = margin * 2 + cellAreaWidth + bmsWidth + 350;
-    const totalHeight = Math.max(margin * 2 + cellAreaHeight + 120, bmsHeight + 150);
+    // BG
+    mkSVG('rect', { x: 0, y: 0, width: TW, height: TH, fill: '#0d1117' }, svg);
+    const pat = mkSVG('pattern', { id: 'grd', width: 22, height: 22, patternUnits: 'userSpaceOnUse' }, defs);
+    mkSVG('path', { d: 'M 22 0 L 0 0 0 22', fill: 'none', stroke: '#161d2e', 'stroke-width': 0.6 }, pat);
+    mkSVG('rect', { x: 0, y: 0, width: TW, height: TH, fill: 'url(#grd)' }, svg);
 
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    svg.setAttribute('width', '100%');
-    svg.setAttribute('height', '100%');
-    svg.setAttribute('viewBox', `0 0 ${totalWidth} ${totalHeight}`);
-    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-    svg.style.display = 'block';
+    // Title
+    mkSVG('rect', { x: PAD, y: 12, width: TW - PAD * 2, height: 28, rx: 6, fill: 'rgba(0,217,255,0.05)', stroke: 'rgba(0,217,255,0.18)', 'stroke-width': 1 }, svg);
+    svTxt(svg, TW / 2, 26, `${S}S${P}P · ${config.cellType} · ${(config.cellVoltage * S).toFixed(1)}V · ${config.cellCapacity * P}mAh`, '#00D9FF', 12, '700');
 
-    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
-    const cellGradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
-    cellGradient.setAttribute('id', 'cellGradient');
-    cellGradient.setAttribute('x1', '0%');
-    cellGradient.setAttribute('y1', '0%');
-    cellGradient.setAttribute('x2', '0%');
-    cellGradient.setAttribute('y2', '100%');
-    cellGradient.innerHTML = `
-        <stop offset="0%" style="stop-color:#9E9E9E;stop-opacity:1" />
-        <stop offset="50%" style="stop-color:#757575;stop-opacity:1" />
-        <stop offset="100%" style="stop-color:#616161;stop-opacity:1" />
-    `;
-    defs.appendChild(cellGradient);
-    svg.appendChild(defs);
+    // Pack boundary
+    const BP = 22;
+    mkSVG('rect', { x: packX - BP, y: packY - BP, width: packW + BP * 2, height: packH + BP * 2, rx: 10, fill: 'rgba(21,101,192,0.05)', stroke: '#1565C0', 'stroke-width': 1.8, 'stroke-dasharray': '6 3' }, svg);
+    svTxt(svg, packX - BP, packY - BP - 10, 'Battery Pack', '#5C85D6', 10, '600', 'start');
 
-    const startX = margin;
-    const startY = margin + 40;
-    const balanceTaps = [];
+    // Bus bars
+    const topY = packY - 14, botY = packY + packH + 14;
+    mkSVG('rect', { x: packX - 2, y: topY - 5, width: packW + 4, height: 10, rx: 3, fill: '#c0392b', filter: 'url(#sh)' }, svg);
+    mkSVG('rect', { x: packX - 2, y: botY - 5, width: packW + 4, height: 10, rx: 3, fill: '#2c2c2c', stroke: '#555', 'stroke-width': 1, filter: 'url(#sh)' }, svg);
+    svTxt(svg, packX - BP - 10, topY, 'B+', '#e74c3c', 10, '800');
+    svTxt(svg, packX - BP - 10, botY, 'B−', '#888', 10, '800');
 
-    // Draw cells in vertical columns
-    for (let s = 0; s < config.seriesCells; s++) {
-        const colX = startX + s * (cellWidth + cellSpacingX);
-
-        for (let p = 0; p < config.parallelCells; p++) {
-            const cellY = startY + p * (cellHeight + cellSpacingY);
-            drawCylindricalCell(svg, colX, cellY, cellWidth, cellHeight, `${s + 1}S`);
-        }
-
-        const bottomY = startY + (config.parallelCells - 1) * (cellHeight + cellSpacingY) + cellHeight;
-        balanceTaps.push({ x: colX + cellWidth / 2, y: bottomY + 5 });
+    // Nickel strips between columns
+    for (let s = 0; s < S - 1; s++) {
+        const x1 = packX + s * (CW + CGAP) + CW;
+        mkSVG('rect', { x: x1, y: topY - 9, width: CGAP, height: 18, rx: 2, fill: 'url(#ng)' }, svg);
+        mkSVG('rect', { x: x1, y: botY - 7, width: CGAP, height: 14, rx: 2, fill: '#555' }, svg);
+        wLine(svg, x1 + CGAP / 2, topY, x1 + CGAP / 2, botY, '#B8860B', 1.5, '5 3');
     }
 
-    balanceTaps.push({ x: startX + cellWidth / 2, y: startY - 5 });
+    // Cells
+    const tapDots = [];
+    tapDots.push({ x: packX + CW / 2, y: botY + 5, lbl: 'B-' });
+    for (let s = 0; s < S - 1; s++) tapDots.push({ x: packX + s * (CW + CGAP) + CW + CGAP / 2, y: topY - 9, lbl: `${s + 1}` });
+    tapDots.push({ x: packX + (S - 1) * (CW + CGAP) + CW / 2, y: topY - 9, lbl: 'B+' });
 
-    // Draw bus bars
-    for (let s = 0; s < config.seriesCells; s++) {
-        const x1 = startX + s * (cellWidth + cellSpacingX);
-        const x2 = x1 + cellWidth;
-        const topY = startY - 10;
-        const bottomY = startY + (config.parallelCells - 1) * (cellHeight + cellSpacingY) + cellHeight + 10;
-
-        // Top bus bar (B+)
-        drawBusBar(svg, x1 + cellWidth / 2, startY, x1 + cellWidth / 2, topY, 'positive', 4);
-        if (s < config.seriesCells - 1) {
-            const nextX = startX + (s + 1) * (cellWidth + cellSpacingX);
-            drawBusBar(svg, x2, topY, nextX, topY, 'positive', 4);
-        }
-
-        // Bottom bus bar (B-)
-        drawBusBar(svg, x1 + cellWidth / 2, bottomY - 10, x1 + cellWidth / 2, bottomY, 'negative', 4);
-        if (s < config.seriesCells - 1) {
-            const nextX = startX + (s + 1) * (cellWidth + cellSpacingX);
-            drawBusBar(svg, x2, bottomY, nextX, bottomY, 'negative', 4);
+    for (let s = 0; s < S; s++) {
+        const cx = packX + s * (CW + CGAP);
+        for (let p = 0; p < P; p++) {
+            const cy = packY + p * (CH + RGAP);
+            const g = mkSVG('g', {}, svg);
+            mkSVG('rect', { x: cx, y: cy, width: CW, height: CH, rx: CRX, fill: 'url(#cg)', stroke: '#2E7D32', 'stroke-width': 1.5, filter: 'url(#sh)' }, g);
+            mkSVG('rect', { x: cx + CW / 2 - 10, y: cy - 5, width: 20, height: 10, rx: 3, fill: '#b71c1c', stroke: '#7f1010', 'stroke-width': 1 }, g);
+            mkSVG('rect', { x: cx + 4, y: cy + 7, width: 8, height: CH - 14, rx: 3, fill: 'rgba(255,255,255,0.1)' }, g);
+            mkSVG('rect', { x: cx + CW / 2 - 2, y: cy + 6, width: 4, height: 14, rx: 1, fill: 'rgba(0,0,0,0.25)' }, g);
+            svTxt(g, cx + CW / 2, cy + 10, '+', '#ffcdd2', 11, '800');
+            svTxt(g, cx + CW / 2, cy + CH - 10, '−', '#aaa', 13, '800');
+            svTxt(g, cx + CW / 2, cy + CH / 2, `${s + 1}S`, 'rgba(255,255,255,0.9)', 13, '700');
+            if (P > 1) svTxt(g, cx + CW / 2, cy + CH / 2 + 16, `P${p + 1}`, 'rgba(255,255,255,0.4)', 9, '500');
         }
     }
 
-    const bNegX = startX + cellWidth / 2;
-    const bNegY = startY + (config.parallelCells - 1) * (cellHeight + cellSpacingY) + cellHeight + 10;
-    const bPosX = startX + (config.seriesCells - 1) * (cellWidth + cellSpacingX) + cellWidth / 2;
-    const bPosY = startY - 10;
+    // BMS
+    if (hasBMS) {
+        const bg = mkSVG('g', {}, svg);
+        mkSVG('rect', { x: BX, y: BY, width: BW, height: BH, rx: 10, fill: 'url(#bg2)', stroke: '#ff6b6b', 'stroke-width': 2, filter: 'url(#sh)' }, bg);
+        mkSVG('rect', { x: BX + 7, y: BY + 7, width: BW - 14, height: BH - 14, rx: 7, fill: 'rgba(0,0,0,0.28)', stroke: 'rgba(255,255,255,0.06)', 'stroke-width': 1 }, bg);
+        mkSVG('circle', { cx: BX + BW / 2, cy: BY + 42, r: 25, fill: 'rgba(0,0,0,0.45)', stroke: '#ff6b6b', 'stroke-width': 1.5 }, bg);
+        svTxt(bg, BX + BW / 2, BY + 38, 'DALY', '#fff', 11, '800');
+        svTxt(bg, BX + BW / 2, BY + 52, 'BMS', '#fff', 7, '600');
+        svTxt(bg, BX + BW / 2, BY + 76, 'Smart BMS', '#ffcccc', 13, '800');
+        mkSVG('circle', { cx: BX + 35, cy: BY + BH - 22, r: 9, fill: 'rgba(0,0,0,0.4)', stroke: 'rgba(255,255,255,0.2)', 'stroke-width': 1 }, bg);
 
-    if (config.bmsProtection) {
-        const bmsX = startX + cellAreaWidth + 180;
-        const bmsY = startY + cellAreaHeight / 2 - bmsHeight / 2;
-        drawProfessionalBMS(svg, bmsX, bmsY, bmsWidth, bmsHeight, balanceTaps,
-            { x: bNegX, y: bNegY }, { x: bPosX, y: bPosY });
+        const ports = [{ lbl: 'B−', c: '#444' }, { lbl: 'P−', c: '#1565C0' }, { lbl: 'PC−', c: '#1a7a1a' }, { lbl: 'B+', c: '#c0392b' }];
+        const ps = BH / (ports.length + 1);
+        const portY = ports.map((_, i) => BY + ps * (i + 1));
+        ports.forEach((pt, i) => {
+            const py = portY[i];
+            mkSVG('rect', { x: BX - 20, y: py - 9, width: 20, height: 18, rx: 3, fill: pt.c, stroke: 'rgba(255,255,255,0.15)', 'stroke-width': 1 }, svg);
+            mkSVG('circle', { cx: BX - 20, cy: py, r: 2.5, fill: 'rgba(255,255,255,0.5)' }, svg);
+            svTxt(svg, BX - 10, py, pt.lbl, '#eee', 7, '700');
+        });
+        // GRN sampling port right
+        mkSVG('rect', { x: BX + BW, y: BY + BH / 2 - 28, width: 18, height: 56, rx: 4, fill: '#1B5E20', stroke: '#4CAF50', 'stroke-width': 1.5 }, svg);
+        svTxt(svg, BX + BW + 9, BY + BH / 2, 'BAL', '#4CAF50', 7, '700');
+        svTxt(svg, BX + BW / 2, BY - 12, 'Sampling / Balance Port', '#4CAF50', 9, '600');
+
+        // Main power wires
+        const wrX = BX - 90;
+        wPath(svg, `M ${packX} ${botY} L ${wrX} ${botY} L ${wrX} ${portY[0]} L ${BX} ${portY[0]}`, '#333', 5);
+        wPath(svg, `M ${packX} ${botY} L ${wrX} ${botY} L ${wrX} ${portY[0]} L ${BX} ${portY[0]}`, '#555', 2);
+        const bpx = packX + (S - 1) * (CW + CGAP) + CW / 2;
+        wPath(svg, `M ${bpx} ${topY} L ${bpx} ${topY - 30} L ${wrX + 18} ${topY - 30} L ${wrX + 18} ${portY[3]} L ${BX} ${portY[3]}`, '#c0392b', 5);
+        svTxt(svg, bpx + 18, topY - 30, 'B+', '#e74c3c', 9, '700', 'start');
+        svTxt(svg, wrX - 12, botY, 'B−', '#777', 9, '700');
+
+        // Balance sampling cable
+        const bcx = BX - 55;
+        mkSVG('rect', { x: bcx - 28, y: packY - BP - 8, width: 56, height: packH + BP * 2 + 8, rx: 4, fill: 'rgba(76,175,80,0.04)', stroke: '#4CAF50', 'stroke-width': 1, 'stroke-dasharray': '4 2' }, svg);
+        svTxt(svg, bcx, packY - BP - 6, 'Sampling', '#4CAF50', 8, '600');
+        tapDots.forEach((tap, i) => {
+            const ty = BY + 16 + i * ((BH - 32) / Math.max(tapDots.length - 1, 1));
+            wPath(svg, `M ${tap.x} ${tap.y} L ${tap.x} ${packY - BP - 20} L ${bcx} ${packY - BP - 20} L ${bcx} ${ty} L ${BX + BW} ${ty}`, '#4CAF50', 1, '3 2');
+            mkSVG('circle', { cx: tap.x, cy: tap.y, r: 4, fill: '#4CAF50', stroke: '#2E7D32', 'stroke-width': 1 }, svg);
+            svTxt(svg, tap.x, tap.y - 9, tap.lbl, '#4CAF50', 7, '700');
+        });
+        mkSVG('circle', { cx: BX + BW, cy: BY + BH / 2, r: 3, fill: '#4CAF50' }, svg);
+
+        // Load box
+        const lg = mkSVG('g', {}, svg);
+        mkSVG('rect', { x: LX, y: LY, width: LW, height: LH, rx: 8, fill: '#0a1a2e', stroke: '#2196F3', 'stroke-width': 2 }, lg);
+        svTxt(lg, LX + LW / 2, LY + 16, '⚡ Motor', '#64B5F6', 10, '700');
+        svTxt(lg, LX + LW / 2, LY + LH - 14, '/ Load', '#2196F3', 10, '600');
+        wPath(svg, `M ${BX} ${portY[1]} L ${BX - 28} ${portY[1]} L ${BX - 28} ${LY + LH + 12} L ${LX} ${LY + LH + 12} L ${LX} ${LY + LH - 5}`, '#1565C0', 3);
+        wPath(svg, `M ${BX} ${portY[3]} L ${BX - 10} ${portY[3]} L ${BX - 10} ${LY + 6} L ${LX} ${LY + 6}`, '#c0392b', 3);
+
+        // Charger box
+        const cg2 = mkSVG('g', {}, svg);
+        mkSVG('rect', { x: LX, y: CY2, width: LW, height: LH, rx: 8, fill: '#1a0d00', stroke: '#FF9800', 'stroke-width': 2 }, cg2);
+        svTxt(cg2, LX + LW / 2, CY2 + 16, '🔌 Charger', '#FFB74D', 10, '700');
+        svTxt(cg2, LX + LW / 2, CY2 + LH - 14, 'Input', '#FF9800', 10, '600');
+        wPath(svg, `M ${BX} ${portY[2]} L ${BX - 48} ${portY[2]} L ${BX - 48} ${CY2 + LH - 5} L ${LX} ${CY2 + LH - 5}`, '#1a7a1a', 3);
+        wPath(svg, `M ${BX - 10} ${portY[3]} L ${BX - 10} ${CY2 + 6} L ${LX} ${CY2 + 6}`, '#c0392b', 3);
+    } else {
+        const tx = packX + packW + 40;
+        mkSVG('rect', { x: tx, y: topY - 14, width: 70, height: 28, rx: 6, fill: 'rgba(192,57,43,0.2)', stroke: '#c0392b', 'stroke-width': 1.5 }, svg);
+        svTxt(svg, tx + 35, topY, 'B+ Out', '#e74c3c', 10, '700');
+        wLine(svg, packX + packW, topY, tx, topY, '#c0392b', 3);
+        mkSVG('rect', { x: tx, y: botY - 14, width: 70, height: 28, rx: 6, fill: 'rgba(40,40,40,0.8)', stroke: '#555', 'stroke-width': 1.5 }, svg);
+        svTxt(svg, tx + 35, botY, 'B− Out', '#aaa', 10, '700');
+        wLine(svg, packX + packW, botY, tx, botY, '#444', 3);
     }
 
-    addLabel(svg, totalWidth / 2, totalHeight - 20,
-        `${config.seriesCells}S${config.parallelCells}P - ${config.cellType} - ${(config.cellVoltage * config.seriesCells).toFixed(1)}V ${config.cellCapacity * config.parallelCells}mAh`);
-
-    canvas.appendChild(svg);
-}
-
-function drawCylindricalCell(svg, x, y, width, height, label) {
-    const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-
-    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('x', x);
-    rect.setAttribute('y', y);
-    rect.setAttribute('width', width);
-    rect.setAttribute('height', height);
-    rect.setAttribute('rx', 6);
-    rect.setAttribute('fill', 'url(#cellGradient)');
-    rect.setAttribute('stroke', '#424242');
-    rect.setAttribute('stroke-width', 1.5);
-    group.appendChild(rect);
-
-    const posTerminal = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    posTerminal.setAttribute('x', x + width / 2 - 8);
-    posTerminal.setAttribute('y', y - 4);
-    posTerminal.setAttribute('width', 16);
-    posTerminal.setAttribute('height', 8);
-    posTerminal.setAttribute('rx', 2);
-    posTerminal.setAttribute('fill', '#D32F2F');
-    group.appendChild(posTerminal);
-
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', x + width / 2);
-    text.setAttribute('y', y + height / 2 + 4);
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('fill', '#FFFFFF');
-    text.setAttribute('font-size', '11');
-    text.setAttribute('font-weight', 'bold');
-    text.textContent = label;
-    group.appendChild(text);
-
-    svg.appendChild(group);
-}
-
-function drawBusBar(svg, x1, y1, x2, y2, type, width) {
-    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-    line.setAttribute('x1', x1);
-    line.setAttribute('y1', y1);
-    line.setAttribute('x2', x2);
-    line.setAttribute('y2', y2);
-    line.setAttribute('stroke', type === 'positive' ? '#D32F2F' : '#212121');
-    line.setAttribute('stroke-width', width);
-    line.setAttribute('stroke-linecap', 'round');
-    svg.appendChild(line);
-}
-
-function drawProfessionalBMS(svg, x, y, width, height, balanceTaps, negTerminal, posTerminal) {
-    // BMS box
-    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('x', x - width / 2);
-    rect.setAttribute('y', y);
-    rect.setAttribute('width', width);
-    rect.setAttribute('height', height);
-    rect.setAttribute('rx', 8);
-    rect.setAttribute('fill', '#757575');
-    rect.setAttribute('stroke', '#00E676');
-    rect.setAttribute('stroke-width', 3);
-    svg.appendChild(rect);
-
-    // BMS label
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', x);
-    text.setAttribute('y', y + 30);
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('fill', '#FFEB3B');
-    text.setAttribute('font-size', '20');
-    text.setAttribute('font-weight', 'bold');
-    text.textContent = 'BMS';
-    svg.appendChild(text);
-
-    // Balance port
-    const balPortX = x - width / 2 - 10;
-    const balPortY = y + 60;
-    const balPortHeight = Math.min(balanceTaps.length * 8, height - 80);
-
-    const balPort = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    balPort.setAttribute('x', balPortX - 12);
-    balPort.setAttribute('y', balPortY);
-    balPort.setAttribute('width', 12);
-    balPort.setAttribute('height', balPortHeight);
-    balPort.setAttribute('fill', '#4CAF50');
-    balPort.setAttribute('stroke', '#2E7D32');
-    balPort.setAttribute('stroke-width', 1.5);
-    svg.appendChild(balPort);
-
-    const balLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    balLabel.setAttribute('x', balPortX - 30);
-    balLabel.setAttribute('y', balPortY + balPortHeight / 2 + 4);
-    balLabel.setAttribute('text-anchor', 'end');
-    balLabel.setAttribute('fill', '#4CAF50');
-    balLabel.setAttribute('font-size', '10');
-    balLabel.setAttribute('font-weight', 'bold');
-    balLabel.textContent = 'Balancing Port';
-    svg.appendChild(balLabel);
-
-    // Balance wires
-    balanceTaps.forEach((tap, index) => {
-        const targetY = balPortY + (index / (balanceTaps.length - 1)) * balPortHeight;
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        const midX = (tap.x + balPortX) / 2;
-        path.setAttribute('d', `M ${tap.x} ${tap.y} Q ${midX} ${tap.y}, ${midX} ${targetY} T ${balPortX} ${targetY}`);
-        path.setAttribute('stroke', index === 0 || index === balanceTaps.length - 1 ? '#2196F3' : '#4CAF50');
-        path.setAttribute('stroke-width', 1.5);
-        path.setAttribute('fill', 'none');
-        path.setAttribute('opacity', '0.7');
-        svg.appendChild(path);
-
-        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        circle.setAttribute('cx', tap.x);
-        circle.setAttribute('cy', tap.y);
-        circle.setAttribute('r', 3);
-        circle.setAttribute('fill', '#4CAF50');
-        svg.appendChild(circle);
+    // Legend
+    const leg = [{ c: '#c0392b', l: 'Positive (B+)' }, { c: '#333', l: 'Negative (B−)' }, { c: '#4CAF50', l: 'Balance/Sampling' }, { c: '#2196F3', l: 'Load' }, { c: '#FF9800', l: 'Charger' }];
+    leg.forEach((it, i) => {
+        const ox = PAD + i * 140;
+        wLine(svg, ox, TH - 20, ox + 20, TH - 20, it.c, 3);
+        svTxt(svg, ox + 28, TH - 20, it.l, 'rgba(255,255,255,0.45)', 9, '500', 'start');
     });
-
-    // Bottom terminals
-    const termY = y + height;
-    const bNegX = x - width / 2 + 30;
-    const pNegX = x - 20;
-    const pcNegX = x + 20;
-    const bPosX = x + width / 2 - 30;
-
-    // B- terminal
-    drawTerminalPin(svg, bNegX, termY, 'B-', '#212121');
-    drawBusBar(svg, negTerminal.x, negTerminal.y, bNegX, negTerminal.y, 'negative', 4);
-    drawBusBar(svg, bNegX, negTerminal.y, bNegX, termY, 'negative', 4);
-
-    // P- terminal
-    drawTerminalPin(svg, pNegX, termY, 'P-', '#212121');
-
-    // PC- terminal
-    drawTerminalPin(svg, pcNegX, termY, 'PC-', '#212121');
-
-    // B+ terminal (connect from top bus bar)
-    drawTerminalPin(svg, bPosX, termY, 'B+', '#D32F2F');
-    drawBusBar(svg, posTerminal.x, posTerminal.y, bPosX, posTerminal.y, 'positive', 4);
-    drawBusBar(svg, bPosX, posTerminal.y, bPosX, termY, 'positive', 4);
-
-    // Load and Charger connections
-    const loadX = x + width / 2 + 80;
-    const chargerX = x + width / 2 + 80;
-
-    // Load connection
-    drawBusBar(svg, pNegX, termY, pNegX, termY + 20, 'negative', 3);
-    drawBusBar(svg, pNegX, termY + 20, loadX, termY + 20, 'negative', 3);
-    drawBusBar(svg, bPosX, termY, bPosX, termY + 30, 'positive', 3);
-    drawBusBar(svg, bPosX, termY + 30, loadX, termY + 30, 'positive', 3);
-
-    const loadBox = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    loadBox.setAttribute('x', loadX);
-    loadBox.setAttribute('y', termY + 15);
-    loadBox.setAttribute('width', 50);
-    loadBox.setAttribute('height', 25);
-    loadBox.setAttribute('fill', 'none');
-    loadBox.setAttribute('stroke', '#2196F3');
-    loadBox.setAttribute('stroke-width', 2);
-    svg.appendChild(loadBox);
-
-    const loadText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    loadText.setAttribute('x', loadX + 25);
-    loadText.setAttribute('y', termY + 30);
-    loadText.setAttribute('text-anchor', 'middle');
-    loadText.setAttribute('fill', '#2196F3');
-    loadText.setAttribute('font-size', '12');
-    loadText.setAttribute('font-weight', 'bold');
-    loadText.textContent = 'Load';
-    svg.appendChild(loadText);
-
-    // Charger connection
-    drawBusBar(svg, pcNegX, termY, pcNegX, termY + 50, 'negative', 3);
-    drawBusBar(svg, pcNegX, termY + 50, chargerX, termY + 50, 'negative', 3);
-    drawBusBar(svg, bPosX, termY + 30, bPosX, termY + 60, 'positive', 3);
-    drawBusBar(svg, bPosX, termY + 60, chargerX, termY + 60, 'positive', 3);
-
-    const chargerBox = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    chargerBox.setAttribute('x', chargerX);
-    chargerBox.setAttribute('y', termY + 45);
-    chargerBox.setAttribute('width', 50);
-    chargerBox.setAttribute('height', 25);
-    chargerBox.setAttribute('fill', 'none');
-    chargerBox.setAttribute('stroke', '#FF9800');
-    chargerBox.setAttribute('stroke-width', 2);
-    svg.appendChild(chargerBox);
-
-    const chargerText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    chargerText.setAttribute('x', chargerX + 25);
-    chargerText.setAttribute('y', termY + 60);
-    chargerText.setAttribute('text-anchor', 'middle');
-    chargerText.setAttribute('fill', '#FF9800');
-    chargerText.setAttribute('font-size', '12');
-    chargerText.setAttribute('font-weight', 'bold');
-    chargerText.textContent = 'Charger';
-    svg.appendChild(chargerText);
 }
+function addLabel() { }
 
-function drawTerminalPin(svg, x, y, label, color) {
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('cx', x);
-    circle.setAttribute('cy', y);
-    circle.setAttribute('r', 6);
-    circle.setAttribute('fill', color);
-    circle.setAttribute('stroke', '#00E676');
-    circle.setAttribute('stroke-width', 2);
-    svg.appendChild(circle);
 
-    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    text.setAttribute('x', x);
-    text.setAttribute('y', y + 18);
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('fill', '#FFFFFF');
-    text.setAttribute('font-size', '10');
-    text.setAttribute('font-weight', 'bold');
-    text.textContent = label;
-    svg.appendChild(text);
-}
-
-function addLabel(svg, x, y, text) {
-    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    label.setAttribute('x', x);
-    label.setAttribute('y', y);
-    label.setAttribute('text-anchor', 'middle');
-    label.setAttribute('fill', '#A0AEC0');
-    label.setAttribute('font-size', '12');
-    label.setAttribute('font-weight', '600');
-    label.textContent = text;
-    svg.appendChild(label);
-}
 
 // ===== Zoom Controls =====
 let zoomLevel = 1;
