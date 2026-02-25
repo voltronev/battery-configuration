@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Battery Pack Viewer – Battery Pack Designer</title>
+    <meta name="description"
+        content="Interactive 3D Battery Pack Shape Configurator – visualize cells packed in custom shapes">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0A0E1A;
+            --bg-secondary: #111827;
+            --bg-card: rgba(255, 255, 255, 0.04);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(0, 217, 255, 0.4);
+            --primary: #00D9FF;
+            --secondary: #7B61FF;
+            --success: #00E676;
+            --warning: #FFD600;
+            --danger: #FF5252;
+            --text-primary: #F0F4FF;
+            --text-secondary: #A0AEC0;
+            --text-muted: #6B7280;
+            --spacing-xs: 0.5rem;
+            --spacing-sm: 0.75rem;
+            --spacing-md: 1rem;
+            --spacing-lg: 1.5rem;
+            --spacing-xl: 2rem;
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 24px;
+            --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Background */
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            background-image:
+                linear-gradient(rgba(0, 217, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 217, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: rgba(0, 217, 255, 0.06);
+            top: -100px;
+            left: -100px;
+        }
+
+        .orb-2 {
+            width: 400px;
+            height: 400px;
+            background: rgba(123, 97, 255, 0.06);
+            bottom: -100px;
+            right: -100px;
+        }
+
+        /* Header */
+        .header {
+            position: relative;
+            z-index: 10;
+            background: rgba(17, 24, 39, 0.8);
+            border-bottom: 1px solid var(--border-color);
+            backdrop-filter: blur(20px);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: rgba(0, 217, 255, 0.1);
+            border: 1px solid rgba(0, 217, 255, 0.2);
+            padding: 0.4rem 0.9rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: rgba(0, 217, 255, 0.2);
+        }
+
+        .header-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .header-title span {
+            color: var(--primary);
+        }
+
+        /* Main Layout */
+        .main {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            min-width: 320px;
+            background: rgba(17, 24, 39, 0.85);
+            border-right: 1px solid var(--border-color);
+            backdrop-filter: blur(20px);
+            overflow-y: auto;
+            padding: var(--spacing-md);
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Shape Selector */
+        .shape-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+        }
+
+        .shape-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.6rem 0.4rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.35rem;
+            color: var(--text-secondary);
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .shape-btn:hover {
+            border-color: var(--border-hover);
+            color: var(--primary);
+        }
+
+        .shape-btn.active {
+            border-color: var(--primary);
+            background: rgba(0, 217, 255, 0.1);
+            color: var(--primary);
+        }
+
+        .shape-btn svg {
+            width: 28px;
+            height: 28px;
+        }
+
+        /* Form Fields */
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .form-label {
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .input-field {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 0.5rem 0.75rem;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            font-family: 'JetBrains Mono', monospace;
+            width: 100%;
+            transition: border-color 0.2s;
+        }
+
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        select.input-field option {
+            background: var(--bg-secondary);
+        }
+
+        .input-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .input-row .form-group {
+            flex: 1;
+        }
+
+        /* Stats Panel */
+        .stats-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.35rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            font-size: 0.8rem;
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-row .name {
+            color: var(--text-muted);
+        }
+
+        .stat-row .val {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .stat-row .val.green {
+            color: var(--success);
+        }
+
+        .stat-row .val.yellow {
+            color: var(--warning);
+        }
+
+        /* Action Button */
+        .btn-generate {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 0.75rem;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 217, 255, 0.3);
+        }
+
+        .btn-generate:active {
+            transform: translateY(0);
+        }
+
+        /* Canvas Area */
+        .canvas-area {
+            flex: 1;
+            position: relative;
+            background: var(--bg-primary);
+        }
+
+        #three-canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
+
+        /* Canvas Overlay */
+        .canvas-overlay {
+            position: absolute;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 0.5rem;
+            z-index: 5;
+        }
+
+        .view-btn {
+            background: rgba(10, 14, 26, 0.85);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            backdrop-filter: blur(10px);
+        }
+
+        .view-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* Status badge */
+        .status-badge {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            z-index: 5;
+            background: rgba(10, 14, 26, 0.85);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.4rem 0.75rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            backdrop-filter: blur(10px);
+        }
+
+        .status-badge span {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Hint overlay */
+        .hint-overlay {
+            position: absolute;
+            inset: 0;
+            z-index: 4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            transition: opacity 0.5s;
+        }
+
+        .hint-overlay .hint-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(0, 217, 255, 0.08);
+            border: 2px dashed rgba(0, 217, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.2rem;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.08);
+                opacity: 0.6;
+            }
+        }
+
+        .hint-overlay p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .hint-overlay strong {
+            color: var(--primary);
+        }
+
+        .hint-overlay.hidden {
+            opacity: 0;
+        }
+
+        /* Legend */
+        .legend {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 5;
+            background: rgba(10, 14, 26, 0.85);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.75rem;
+            backdrop-filter: blur(10px);
+            font-size: 0.75rem;
+            display: none;
+        }
+
+        .legend.visible {
+            display: block;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.3rem;
+            color: var(--text-secondary);
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+        }
+
+        /* Separator */
+        hr {
+            border: none;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Color toggle */
+        .color-presets {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+        }
+
+        .color-swatch {
+            width: 24px;
+            height: 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: border-color 0.2s;
+        }
+
+        .color-swatch:hover,
+        .color-swatch.active {
+            border-color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="bg-grid"></div>
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <a href="index.html" class="back-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="15 18 9 12 15 6" />
+                </svg>
+                Back
+            </a>
+            <div class="header-title">3D Pack <span>Shape Viewer</span></div>
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-muted);">
+            🖱️ Left drag = Rotate &nbsp;|&nbsp; Scroll = Zoom &nbsp;|&nbsp; Right drag = Pan
+        </div>
+    </header>
+
+    <!-- Main -->
+    <div class="main">
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Pack Shape -->
+            <div>
+                <div class="section-title">Pack Shape</div>
+                <div class="shape-grid">
+                    <button class="shape-btn active" data-shape="rectangle" onclick="selectShape('rectangle', this)">
+                        <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="7" width="22" height="14" rx="1" />
+                        </svg>
+                        Rectangle
+                    </button>
+                    <button class="shape-btn" data-shape="square" onclick="selectShape('square', this)">
+                        <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="4" y="4" width="20" height="20" rx="1" />
+                        </svg>
+                        Square
+                    </button>
+                    <button class="shape-btn" data-shape="circle" onclick="selectShape('circle', this)">
+                        <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="14" cy="14" r="10" />
+                        </svg>
+                        Circle
+                    </button>
+                    <button class="shape-btn" data-shape="hexagon" onclick="selectShape('hexagon', this)">
+                        <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="14,3 24,8.5 24,19.5 14,25 4,19.5 4,8.5" />
+                        </svg>
+                        Hexagon
+                    </button>
+                    <button class="shape-btn" data-shape="octagon" onclick="selectShape('octagon', this)">
+                        <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="10,3 18,3 25,10 25,18 18,25 10,25 3,18 3,10" />
+                        </svg>
+                        Octagon
+                    </button>
+                    <button class="shape-btn" data-shape="triangle" onclick="selectShape('triangle', this)">
+                        <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="14,3 25,24 3,24" />
+                        </svg>
+                        Triangle
+                    </button>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Pack Dimensions -->
+            <div>
+                <div class="section-title">Pack Dimensions (mm)</div>
+                <div id="dim-fields">
+                    <!-- Dynamic fields rendered by JS -->
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Cell Configuration -->
+            <div>
+                <div class="section-title">Cell Configuration</div>
+                <div class="form-group">
+                    <label class="form-label">Cell Type</label>
+                    <select class="input-field" id="cell-type" onchange="updateCellDims()">
+                        <option value="18650">18650 – Ø18 × 65mm</option>
+                        <option value="21700">21700 – Ø21 × 70mm</option>
+                        <option value="26650">26650 – Ø26 × 65mm</option>
+                        <option value="32650">32650 – Ø32 × 65mm</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                <div class="input-row" id="custom-dims" style="display:none;">
+                    <div class="form-group">
+                        <label class="form-label">Diameter (mm)</label>
+                        <input type="number" class="input-field" id="cell-d" value="18" min="5" max="100" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Length (mm)</label>
+                        <input type="number" class="input-field" id="cell-l" value="65" min="10" max="300" step="0.1">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top:0.5rem;">
+                    <label class="form-label">Cell Gap / Spacing (mm)</label>
+                    <input type="number" class="input-field" id="cell-gap" value="1.0" min="0" max="10" step="0.5">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Wall Thickness (mm)</label>
+                    <input type="number" class="input-field" id="wall-thick" value="3" min="0" max="20" step="0.5">
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Visual Style -->
+            <div>
+                <div class="section-title">Cell Color</div>
+                <div class="color-presets" id="color-presets">
+                    <div class="color-swatch active" style="background:#00D9FF" data-color="#00D9FF"
+                        onclick="selectColor(this)"></div>
+                    <div class="color-swatch" style="background:#00E676" data-color="#00E676"
+                        onclick="selectColor(this)"></div>
+                    <div class="color-swatch" style="background:#FF9800" data-color="#FF9800"
+                        onclick="selectColor(this)"></div>
+                    <div class="color-swatch" style="background:#7B61FF" data-color="#7B61FF"
+                        onclick="selectColor(this)"></div>
+                    <div class="color-swatch" style="background:#FF5252" data-color="#FF5252"
+                        onclick="selectColor(this)"></div>
+                    <div class="color-swatch" style="background:#E0E0E0" data-color="#E0E0E0"
+                        onclick="selectColor(this)"></div>
+                </div>
+            </div>
+
+            <hr>
+
+            <!-- Generate -->
+            <button class="btn-generate" onclick="generatePack()">⚡ Generate 3D Pack</button>
+
+            <!-- Stats -->
+            <div>
+                <div class="section-title">Pack Statistics</div>
+                <div class="stats-panel">
+                    <div class="stat-row"><span class="name">Cells Fitted</span><span class="val" id="st-cells">—</span>
+                    </div>
+                    <div class="stat-row"><span class="name">Configuration</span><span class="val"
+                            id="st-config">—</span></div>
+                    <div class="stat-row"><span class="name">Pack Dimensions</span><span class="val"
+                            id="st-dims">—</span></div>
+                    <div class="stat-row"><span class="name">Fill Efficiency</span><span class="val green"
+                            id="st-fill">—</span></div>
+                    <div class="stat-row"><span class="name">Cell Diameter</span><span class="val" id="st-cd">—</span>
+                    </div>
+                    <div class="stat-row"><span class="name">Cell Length</span><span class="val" id="st-cl">—</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3D Canvas Area -->
+        <div class="canvas-area">
+            <div class="status-badge" id="status-badge">
+                Configure your pack and click <span>Generate 3D Pack</span>
+            </div>
+
+            <div class="hint-overlay" id="hint-overlay">
+                <div class="hint-icon">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#00D9FF" stroke-width="1.5">
+                        <rect x="2" y="6" width="20" height="12" rx="2" />
+                        <rect x="22" y="10" width="2" height="4" rx="0.5" fill="#00D9FF" />
+                        <path d="M7 10h10M7 14h6" stroke="#00D9FF" stroke-dasharray="2 2" />
+                    </svg>
+                </div>
+                <p>Select a <strong>pack shape</strong>, set dimensions,</p>
+                <p>then click <strong>Generate 3D Pack</strong></p>
+            </div>
+
+            <canvas id="three-canvas"></canvas>
+
+            <div class="legend" id="legend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:#00D9FF"></div> Battery Cells
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:rgba(255,255,255,0.15)"></div> Pack Housing
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:#00E676"></div> Positive Terminal
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background:#FF5252"></div> Negative Terminal
+                </div>
+            </div>
+
+            <div class="canvas-overlay">
+                <button class="view-btn" onclick="setView('top')">⬆ Top View</button>
+                <button class="view-btn" onclick="setView('front')">↔ Front View</button>
+                <button class="view-btn" onclick="setView('side')">↕ Side View</button>
+                <button class="view-btn" onclick="setView('iso')">⟳ Isometric</button>
+                <button class="view-btn" onclick="resetView()">⊙ Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===========================
+        // Three.js Setup
+        // ===========================
+        const canvas = document.getElementById('three-canvas');
+        const canvasArea = document.querySelector('.canvas-area');
+
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.setClearColor(0x0A0E1A, 1);
+
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.Fog(0x0A0E1A, 500, 1500);
+
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 5000);
+        camera.position.set(200, 180, 280);
+
+        const controls = new THREE.OrbitControls(camera, canvas);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.minDistance = 30;
+        controls.maxDistance = 1200;
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+        dirLight.position.set(200, 400, 200);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.set(2048, 2048);
+        scene.add(dirLight);
+
+        const fillLight = new THREE.DirectionalLight(0x00D9FF, 0.3);
+        fillLight.position.set(-200, 100, -200);
+        scene.add(fillLight);
+
+        const rimLight = new THREE.DirectionalLight(0x7B61FF, 0.2);
+        rimLight.position.set(0, -100, -200);
+        scene.add(rimLight);
+
+        // Grid helper
+        const gridHelper = new THREE.GridHelper(600, 30, 0x1a2035, 0x1a2035);
+        scene.add(gridHelper);
+
+        // Resize
+        function resizeRenderer() {
+            const w = canvasArea.clientWidth;
+            const h = canvasArea.clientHeight;
+            renderer.setSize(w, h);
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+        }
+        window.addEventListener('resize', resizeRenderer);
+        resizeRenderer();
+
+        // Animate
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // ===========================
+        // State
+        // ===========================
+        let selectedShape = 'rectangle';
+        let selectedColor = '#00D9FF';
+        let packGroup = null;
+
+        const CELL_PRESETS = {
+            '18650': { d: 18, l: 65 },
+            '21700': { d: 21, l: 70 },
+            '26650': { d: 26, l: 65 },
+            '32650': { d: 32, l: 65 },
+        };
+
+        // ===========================
+        // UI Handlers
+        // ===========================
+        function selectShape(shape, btn) {
+            selectedShape = shape;
+            document.querySelectorAll('.shape-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderDimFields();
+        }
+
+        function selectColor(swatch) {
+            document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+            swatch.classList.add('active');
+            selectedColor = swatch.dataset.color;
+        }
+
+        function updateCellDims() {
+            const type = document.getElementById('cell-type').value;
+            const customDiv = document.getElementById('custom-dims');
+            if (type === 'custom') {
+                customDiv.style.display = 'flex';
+            } else {
+                customDiv.style.display = 'none';
+                const preset = CELL_PRESETS[type];
+                document.getElementById('cell-d').value = preset.d;
+                document.getElementById('cell-l').value = preset.l;
+            }
+        }
+
+        function getCellDims() {
+            const type = document.getElementById('cell-type').value;
+            if (type === 'custom') {
+                return {
+                    d: parseFloat(document.getElementById('cell-d').value) || 18,
+                    l: parseFloat(document.getElementById('cell-l').value) || 65,
+                };
+            }
+            return CELL_PRESETS[type];
+        }
+
+        // ===========================
+        // Dimension Fields by Shape
+        // ===========================
+        function renderDimFields() {
+            const container = document.getElementById('dim-fields');
+            let html = '';
+
+            if (selectedShape === 'rectangle') {
+                html = `
+            <div class="input-row">
+                <div class="form-group">
+                    <label class="form-label">Width (mm)</label>
+                    <input type="number" class="input-field" id="dim-w" value="200" min="20" step="5">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Depth (mm)</label>
+                    <input type="number" class="input-field" id="dim-d" value="100" min="20" step="5">
+                </div>
+            </div>
+            <div class="form-group" style="margin-top:0.5rem;">
+                <label class="form-label">Height (mm)</label>
+                <input type="number" class="input-field" id="dim-h" value="70" min="20" step="5">
+            </div>`;
+            } else if (selectedShape === 'square') {
+                html = `
+            <div class="form-group">
+                <label class="form-label">Side Length (mm)</label>
+                <input type="number" class="input-field" id="dim-s" value="150" min="20" step="5">
+            </div>
+            <div class="form-group" style="margin-top:0.5rem;">
+                <label class="form-label">Height (mm)</label>
+                <input type="number" class="input-field" id="dim-h" value="70" min="20" step="5">
+            </div>`;
+            } else if (selectedShape === 'circle') {
+                html = `
+            <div class="form-group">
+                <label class="form-label">Radius (mm)</label>
+                <input type="number" class="input-field" id="dim-r" value="80" min="10" step="5">
+            </div>
+            <div class="form-group" style="margin-top:0.5rem;">
+                <label class="form-label">Height (mm)</label>
+                <input type="number" class="input-field" id="dim-h" value="70" min="20" step="5">
+            </div>`;
+            } else if (selectedShape === 'hexagon') {
+                html = `
+            <div class="form-group">
+                <label class="form-label">Hex Radius / Size (mm)</label>
+                <input type="number" class="input-field" id="dim-r" value="90" min="10" step="5">
+            </div>
+            <div class="form-group" style="margin-top:0.5rem;">
+                <label class="form-label">Height (mm)</label>
+                <input type="number" class="input-field" id="dim-h" value="70" min="20" step="5">
+            </div>`;
+            } else if (selectedShape === 'octagon') {
+                html = `
+            <div class="form-group">
+                <label class="form-label">Outer Width (mm)</label>
+                <input type="number" class="input-field" id="dim-w" value="160" min="20" step="5">
+            </div>
+            <div class="form-group" style="margin-top:0.5rem;">
+                <label class="form-label">Height (mm)</label>
+                <input type="number" class="input-field" id="dim-h" value="70" min="20" step="5">
+            </div>`;
+            } else if (selectedShape === 'triangle') {
+                html = `
+            <div class="form-group">
+                <label class="form-label">Base Width (mm)</label>
+                <input type="number" class="input-field" id="dim-w" value="200" min="30" step="5">
+            </div>
+            <div class="form-group" style="margin-top:0.5rem;">
+                <label class="form-label">Height (mm)</label>
+                <input type="number" class="input-field" id="dim-h" value="70" min="20" step="5">
+            </div>`;
+            }
+            container.innerHTML = html;
+        }
+
+        // ===========================
+        // Cell Packing Algorithms
+        // ===========================
+        function getVal(id, fallback) {
+            const el = document.getElementById(id);
+            return el ? parseFloat(el.value) || fallback : fallback;
+        }
+
+        function packRectangle(W, D, cellD, gap) {
+            const pitch = cellD + gap;
+            const positions = [];
+            const cols = Math.floor(W / pitch);
+            const rows = Math.floor(D / pitch);
+            const startX = -(cols - 1) * pitch / 2;
+            const startZ = -(rows - 1) * pitch / 2;
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    positions.push({ x: startX + c * pitch, z: startZ + r * pitch });
+                }
+            }
+            return positions;
+        }
+
+        function packCircle(R, cellD, gap) {
+            const pitch = cellD + gap;
+            const innerR = R - cellD / 2;
+            const positions = [];
+            // Hexagonal packing inside circle
+            const rowHeight = pitch * Math.sqrt(3) / 2;
+            const numRows = Math.ceil(2 * innerR / rowHeight);
+            for (let row = -numRows; row <= numRows; row++) {
+                const z = row * rowHeight;
+                const offset = (row % 2 === 0) ? 0 : pitch / 2;
+                const numCols = Math.ceil(2 * innerR / pitch);
+                for (let col = -numCols; col <= numCols; col++) {
+                    const x = col * pitch + offset;
+                    if (Math.sqrt(x * x + z * z) + cellD / 2 <= innerR) {
+                        positions.push({ x, z });
+                    }
+                }
+            }
+            return positions;
+        }
+
+        function packHexagon(R, cellD, gap) {
+            const pitch = cellD + gap;
+            const positions = [];
+            const rowHeight = pitch * Math.sqrt(3) / 2;
+            const numRows = Math.ceil(2 * R / rowHeight) + 2;
+            for (let row = -numRows; row <= numRows; row++) {
+                const z = row * rowHeight;
+                const offset = (row % 2 === 0) ? 0 : pitch / 2;
+                const numCols = Math.ceil(2 * R / pitch) + 2;
+                for (let col = -numCols; col <= numCols; col++) {
+                    const x = col * pitch + offset;
+                    if (pointInHexagon(x, z, R - cellD / 2)) {
+                        positions.push({ x, z });
+                    }
+                }
+            }
+            return positions;
+        }
+
+        function pointInHexagon(x, z, R) {
+            const q = (2 / 3 * x) / R;
+            const r = (-1 / 3 * x + Math.sqrt(3) / 3 * z) / R;
+            const s = -q - r;
+            return Math.round(Math.abs(q)) + Math.round(Math.abs(r)) + Math.round(Math.abs(s)) <= 2
+                && Math.max(Math.abs(q), Math.abs(r), Math.abs(s)) <= 1;
+        }
+
+        function packOctagon(W, cellD, gap) {
+            // Octagon inscribed in W×W
+            const pitch = cellD + gap;
+            const positions = [];
+            const side = W / (1 + Math.SQRT2);
+            const cut = (W - side) / 2;
+            // Bounding box then polygon test
+            const cols = Math.floor(W / pitch) + 2;
+            const rows = Math.floor(W / pitch) + 2;
+            for (let r = -rows; r <= rows; r++) {
+                for (let c = -cols; c <= cols; c++) {
+                    const x = c * pitch + (r % 2 === 0 ? 0 : pitch / 2);
+                    const z = r * pitch;
+                    if (pointInOctagon(x, z, W / 2, cut, cellD / 2)) {
+                        positions.push({ x, z });
+                    }
+                }
+            }
+            return positions;
+        }
+
+        function pointInOctagon(px, pz, R, cut, margin) {
+            const ax = Math.abs(px), az = Math.abs(pz);
+            return ax <= R - margin && az <= R - margin
+                && ax + az <= (2 * R - cut) - margin;
+        }
+
+        function packTriangle(baseW, cellD, gap) {
+            const pitch = cellD + gap;
+            const positions = [];
+            const h = baseW * Math.sqrt(3) / 2; // equilateral triangle height
+            const rowHeight = pitch * Math.sqrt(3) / 2;
+            const numRows = Math.floor(h / rowHeight);
+            for (let row = 0; row < numRows; row++) {
+                const z = -h / 3 + row * rowHeight + cellD / 2;
+                const rowWidth = baseW * (1 - row / numRows) - cellD;
+                const numCols = Math.floor(rowWidth / pitch);
+                const startX = -(numCols - 1) * pitch / 2 + (row % 2 === 0 ? 0 : pitch / 2);
+                for (let col = 0; col < numCols; col++) {
+                    const x = startX + col * pitch;
+                    positions.push({ x, z });
+                }
+            }
+            return positions;
+        }
+
+        // ===========================
+        // 3D Object Builders
+        // ===========================
+        function makeCell(x, y, z, d, l, color, index) {
+            const group = new THREE.Group();
+
+            // Cell body
+            const bodyGeo = new THREE.CylinderGeometry(d / 2, d / 2, l - 4, 24);
+            const bodyMat = new THREE.MeshPhysicalMaterial({
+                color: new THREE.Color(color),
+                metalness: 0.5,
+                roughness: 0.3,
+                emissive: new THREE.Color(color),
+                emissiveIntensity: 0.05,
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.castShadow = true;
+            group.add(body);
+
+            // Cell wrap (label area)
+            const wrapGeo = new THREE.CylinderGeometry(d / 2 + 0.3, d / 2 + 0.3, l * 0.6, 24);
+            const wrapMat = new THREE.MeshStandardMaterial({
+                color: 0x101820,
+                metalness: 0.1, roughness: 0.8,
+                transparent: true, opacity: 0.85
+            });
+            const wrap = new THREE.Mesh(wrapGeo, wrapMat);
+            group.add(wrap);
+
+            // Positive terminal (top – green cap)
+            const posGeo = new THREE.CylinderGeometry(d / 2 * 0.45, d / 2 * 0.45, 2.5, 16);
+            const posMat = new THREE.MeshPhysicalMaterial({ color: 0x00E676, metalness: 0.9, roughness: 0.1 });
+            const pos = new THREE.Mesh(posGeo, posMat);
+            pos.position.y = l / 2;
+            group.add(pos);
+
+            // Negative terminal (bottom – flat red ring)
+            const negGeo = new THREE.CylinderGeometry(d / 2 - 1, d / 2 - 1, 1.5, 24);
+            const negMat = new THREE.MeshPhysicalMaterial({ color: 0xFF5252, metalness: 0.8, roughness: 0.2 });
+            const neg = new THREE.Mesh(negGeo, negMat);
+            neg.position.y = -l / 2;
+            group.add(neg);
+
+            // Label text ring
+            const ringGeo = new THREE.TorusGeometry(d / 2 + 0.5, 0.8, 8, 24);
+            const ringMat = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), emissive: new THREE.Color(color), emissiveIntensity: 0.4 });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = Math.PI / 2;
+            ring.position.y = l * 0.35;
+            group.add(ring);
+
+            group.position.set(x, y, z);
+            return group;
+        }
+
+        function makeHousingShape(shape, params, height, wallT) {
+            let shape3D;
+
+            if (shape === 'rectangle' || shape === 'square') {
+                const W = shape === 'square' ? params.side : params.width;
+                const D = shape === 'square' ? params.side : params.depth;
+                shape3D = new THREE.Shape();
+                shape3D.moveTo(-W / 2, -D / 2);
+                shape3D.lineTo(W / 2, -D / 2);
+                shape3D.lineTo(W / 2, D / 2);
+                shape3D.lineTo(-W / 2, D / 2);
+                shape3D.closePath();
+
+                // Hole (inner)
+                const hole = new THREE.Path();
+                hole.moveTo(-W / 2 + wallT, -D / 2 + wallT);
+                hole.lineTo(W / 2 - wallT, -D / 2 + wallT);
+                hole.lineTo(W / 2 - wallT, D / 2 - wallT);
+                hole.lineTo(-W / 2 + wallT, D / 2 - wallT);
+                hole.closePath();
+                shape3D.holes.push(hole);
+
+            } else if (shape === 'circle') {
+                const R = params.radius;
+                shape3D = new THREE.Shape();
+                shape3D.absarc(0, 0, R, 0, Math.PI * 2, false);
+                const hole = new THREE.Path();
+                hole.absarc(0, 0, R - wallT, 0, Math.PI * 2, true);
+                shape3D.holes.push(hole);
+
+            } else if (shape === 'hexagon') {
+                const R = params.radius;
+                shape3D = new THREE.Shape();
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI / 3) * i - Math.PI / 6;
+                    const x = R * Math.cos(angle);
+                    const y = R * Math.sin(angle);
+                    if (i === 0) shape3D.moveTo(x, y);
+                    else shape3D.lineTo(x, y);
+                }
+                shape3D.closePath();
+                const hole = new THREE.Path();
+                for (let i = 0; i < 6; i++) {
+                    const angle = (Math.PI / 3) * i - Math.PI / 6;
+                    const x = (R - wallT) * Math.cos(angle);
+                    const y = (R - wallT) * Math.sin(angle);
+                    if (i === 0) hole.moveTo(x, y);
+                    else hole.lineTo(x, y);
+                }
+                hole.closePath();
+                shape3D.holes.push(hole);
+
+            } else if (shape === 'octagon') {
+                const R = params.width / 2;
+                shape3D = new THREE.Shape();
+                for (let i = 0; i < 8; i++) {
+                    const angle = (Math.PI / 4) * i + Math.PI / 8;
+                    const x = R * Math.cos(angle);
+                    const y = R * Math.sin(angle);
+                    if (i === 0) shape3D.moveTo(x, y);
+                    else shape3D.lineTo(x, y);
+                }
+                shape3D.closePath();
+                const hole = new THREE.Path();
+                for (let i = 0; i < 8; i++) {
+                    const angle = (Math.PI / 4) * i + Math.PI / 8;
+                    const x = (R - wallT) * Math.cos(angle);
+                    const y = (R - wallT) * Math.sin(angle);
+                    if (i === 0) hole.moveTo(x, y);
+                    else hole.lineTo(x, y);
+                }
+                hole.closePath();
+                shape3D.holes.push(hole);
+
+            } else if (shape === 'triangle') {
+                const W = params.width;
+                const H = W * Math.sqrt(3) / 2;
+                shape3D = new THREE.Shape();
+                shape3D.moveTo(0, H * 2 / 3);
+                shape3D.lineTo(W / 2, -H / 3);
+                shape3D.lineTo(-W / 2, -H / 3);
+                shape3D.closePath();
+                const ir = wallT * 2;
+                const hole = new THREE.Path();
+                hole.moveTo(0, H * 2 / 3 - ir * 2);
+                hole.lineTo(W / 2 - ir, -H / 3 + ir);
+                hole.lineTo(-W / 2 + ir, -H / 3 + ir);
+                hole.closePath();
+                shape3D.holes.push(hole);
+            }
+
+            const extrudeSettings = {
+                steps: 1, depth: height,
+                bevelEnabled: true, bevelThickness: 1, bevelSize: 1, bevelSegments: 3
+            };
+
+            return new THREE.ExtrudeGeometry(shape3D, extrudeSettings);
+        }
+
+        // ===========================
+        // Generate 3D Pack
+        // ===========================
+        function generatePack() {
+            // Remove old pack
+            if (packGroup) {
+                scene.remove(packGroup);
+                packGroup = null;
+            }
+
+            // Hide hint
+            document.getElementById('hint-overlay').classList.add('hidden');
+            document.getElementById('legend').classList.add('visible');
+
+            const { d: cellD, l: cellL } = getCellDims();
+            const gap = getVal('cell-gap', 1.0);
+            const wallT = getVal('wall-thick', 3);
+            const packH = getVal('dim-h', 70);
+
+            packGroup = new THREE.Group();
+
+            let positions = [];
+            let housingGeo = null;
+            let dimStr = '';
+            let shapeLabel = '';
+
+            if (selectedShape === 'rectangle') {
+                const W = getVal('dim-w', 200);
+                const D = getVal('dim-d', 100);
+                const iW = W - wallT * 2;
+                const iD = D - wallT * 2;
+                positions = packRectangle(iW, iD, cellD, gap);
+                housingGeo = makeHousingShape('rectangle', { width: W, depth: D }, packH, wallT);
+                dimStr = `${W}×${D}×${packH}mm`;
+                shapeLabel = 'Rectangle';
+            } else if (selectedShape === 'square') {
+                const S = getVal('dim-s', 150);
+                const iS = S - wallT * 2;
+                positions = packRectangle(iS, iS, cellD, gap);
+                housingGeo = makeHousingShape('square', { side: S }, packH, wallT);
+                dimStr = `${S}×${S}×${packH}mm`;
+                shapeLabel = 'Square';
+            } else if (selectedShape === 'circle') {
+                const R = getVal('dim-r', 80);
+                positions = packCircle(R - wallT, cellD, gap);
+                housingGeo = makeHousingShape('circle', { radius: R }, packH, wallT);
+                dimStr = `Ø${R * 2}×${packH}mm`;
+                shapeLabel = 'Circle';
+            } else if (selectedShape === 'hexagon') {
+                const R = getVal('dim-r', 90);
+                positions = packHexagon(R - wallT, cellD, gap);
+                housingGeo = makeHousingShape('hexagon', { radius: R }, packH, wallT);
+                dimStr = `R${R}×${packH}mm`;
+                shapeLabel = 'Hexagon';
+            } else if (selectedShape === 'octagon') {
+                const W = getVal('dim-w', 160);
+                positions = packOctagon(W - wallT * 2, cellD, gap);
+                housingGeo = makeHousingShape('octagon', { width: W }, packH, wallT);
+                dimStr = `${W}×${W}×${packH}mm`;
+                shapeLabel = 'Octagon';
+            } else if (selectedShape === 'triangle') {
+                const W = getVal('dim-w', 200);
+                positions = packTriangle(W - wallT * 2, cellD, gap);
+                housingGeo = makeHousingShape('triangle', { width: W }, packH, wallT);
+                dimStr = `Base ${W}×${packH}mm`;
+                shapeLabel = 'Triangle';
+            }
+
+            // Housing mesh
+            if (housingGeo) {
+                const housingMat = new THREE.MeshPhysicalMaterial({
+                    color: 0x1a2035,
+                    metalness: 0.3,
+                    roughness: 0.4,
+                    transparent: true,
+                    opacity: 0.6,
+                    side: THREE.DoubleSide,
+                    emissive: 0x00D9FF,
+                    emissiveIntensity: 0.02,
+                });
+                const housing = new THREE.Mesh(housingGeo, housingMat);
+                housing.rotation.x = -Math.PI / 2;
+                housing.position.y = -packH / 2;
+                housing.receiveShadow = true;
+                packGroup.add(housing);
+
+                // Housing edge highlight
+                const edgeMat = new THREE.LineBasicMaterial({ color: 0x00D9FF, transparent: true, opacity: 0.4 });
+                const edges = new THREE.EdgesGeometry(housingGeo);
+                const edgeLine = new THREE.LineSegments(edges, edgeMat);
+                edgeLine.rotation.x = -Math.PI / 2;
+                edgeLine.position.y = -packH / 2;
+                packGroup.add(edgeLine);
+            }
+
+            // Bottom plate
+            const bottomMat = new THREE.MeshPhysicalMaterial({
+                color: 0x1e2840,
+                metalness: 0.5,
+                roughness: 0.3,
+            });
+
+            // Cells
+            const yCenter = 0;
+            positions.forEach((pos, idx) => {
+                const cell = makeCell(pos.x, yCenter, pos.z, cellD, cellL, selectedColor, idx);
+                packGroup.add(cell);
+            });
+
+            // Center the group
+            packGroup.position.set(0, cellL / 2, 0);
+            scene.add(packGroup);
+
+            // Update stats
+            const totalCells = positions.length;
+            const rows = [...new Set(positions.map(p => Math.round(p.z)))].length;
+            const cols = Math.ceil(totalCells / Math.max(rows, 1));
+
+            document.getElementById('st-cells').textContent = totalCells;
+            document.getElementById('st-config').textContent = `${shapeLabel} Pack`;
+            document.getElementById('st-dims').textContent = dimStr;
+            document.getElementById('st-cd').textContent = `${cellD}mm`;
+            document.getElementById('st-cl').textContent = `${cellL}mm`;
+
+            // Fill efficiency (approximate)
+            const cellArea = totalCells * Math.PI * Math.pow(cellD / 2, 2);
+            const packArea = totalCells > 0 ? cellArea / 0.78 * 1.05 : 1; // rough
+            const pct = Math.min(99, Math.round(cellArea / packArea * 100));
+            document.getElementById('st-fill').textContent = `~${pct}%`;
+
+            // Status
+            document.getElementById('status-badge').innerHTML =
+                `<span>${totalCells}</span> cells packed · ${shapeLabel} shape · ${dimStr}`;
+
+            // Camera: auto-fit
+            resetView();
+        }
+
+        // ===========================
+        // Camera Views
+        // ===========================
+        function setView(view) {
+            const dist = 400;
+            if (view === 'top') {
+                camera.position.set(0, dist, 0.01);
+            } else if (view === 'front') {
+                camera.position.set(0, 50, dist);
+            } else if (view === 'side') {
+                camera.position.set(dist, 50, 0);
+            } else if (view === 'iso') {
+                camera.position.set(dist * 0.7, dist * 0.7, dist * 0.7);
+            }
+            controls.target.set(0, 50, 0);
+            controls.update();
+        }
+
+        function resetView() {
+            camera.position.set(200, 180, 280);
+            controls.target.set(0, 50, 0);
+            controls.update();
+        }
+
+        // ===========================
+        // Init
+        // ===========================
+        renderDimFields();
+    </script>
+</body>
+
+</html>
