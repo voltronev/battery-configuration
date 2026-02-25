@@ -913,7 +913,9 @@
                 const bmsM = new THREE.Mesh(bmsGeo, bmsMat); bmsM.position.set(bmsX + bmsW / 2, bmsY, 0); g.add(bmsM);
                 // BMS edge highlight
                 const edgeMat2 = new THREE.LineBasicMaterial({ color: 0x00E676, transparent: true, opacity: 0.6 });
-                g.add(Object.assign(new THREE.LineSegments(new THREE.EdgesGeometry(bmsGeo), edgeMat2), { position: new THREE.Vector3(bmsX + bmsW / 2, bmsY, 0) }));
+                const bmsEdge = new THREE.LineSegments(new THREE.EdgesGeometry(bmsGeo), edgeMat2);
+                bmsEdge.position.set(bmsX + bmsW / 2, bmsY, 0);
+                g.add(bmsEdge);
                 // BMS label
                 label3d(g, 'BMS', bmsX + bmsW / 2, bmsY + bmsH / 2 + 10, 0, '#FFEB3B', 10);
 
@@ -1105,19 +1107,22 @@
         // ── Auto-generate if loaded from configurator ────────────────
         if (UP.has('s')) {
             setTimeout(() => {
-                // Force connected mode and directly build the connected pack
-                mode = 'connected';
-                document.getElementById('tab-connected').classList.add('active');
-                document.getElementById('tab-shape').classList.remove('active');
-                document.getElementById('panel-connected').style.cssText = 'display:flex;flex-direction:column;gap:0.7rem';
-                document.getElementById('panel-shape').style.display = 'none';
-
-                if (packGroup) { scene.remove(packGroup); packGroup = null; }
-                document.getElementById('hint').classList.add('hidden');
-                document.getElementById('legend').classList.add('vis');
-                packGroup = buildConnectedPack();
-                scene.add(packGroup);
-                autoFitCamera(packGroup);
+                try {
+                    mode = 'connected';
+                    document.getElementById('tab-connected').classList.add('active');
+                    document.getElementById('tab-shape').classList.remove('active');
+                    document.getElementById('panel-connected').style.cssText = 'display:flex;flex-direction:column;gap:0.7rem';
+                    document.getElementById('panel-shape').style.display = 'none';
+                    if (packGroup) { scene.remove(packGroup); packGroup = null; }
+                    document.getElementById('hint').classList.add('hidden');
+                    document.getElementById('legend').classList.add('vis');
+                    packGroup = buildConnectedPack();
+                    scene.add(packGroup);
+                    autoFitCamera(packGroup);
+                } catch (err) {
+                    console.error('3D Pack build error:', err);
+                    document.getElementById('statusbadge').innerHTML = '<span style="color:#FF5252">⚠ Render error — check console</span>';
+                }
             }, 400);
         }
     </script>
