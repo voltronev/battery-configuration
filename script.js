@@ -75,6 +75,58 @@ nextBtn.addEventListener('click', () => {
 generateBtn.addEventListener('click', () => {
     generateDiagram();
     showNotification('Connection diagram generated successfully!', 'success');
+    // Show 3D View button
+    const existing3dBtn = document.getElementById('view-3d-btn');
+    if (!existing3dBtn) {
+        const btn3d = document.createElement('a');
+        btn3d.id = 'view-3d-btn';
+        const params = new URLSearchParams({
+            s: config.seriesCells,
+            p: config.parallelCells,
+            type: config.cellType,
+            d: config.cellDiameter || 18,
+            l: config.cellLength || 65,
+            bms: config.bmsProtection ? 1 : 0,
+            voltage: config.cellVoltage,
+            capacity: config.cellCapacity,
+            maxA: config.maxDischarge,
+            connector: config.outputConnector
+        });
+        btn3d.href = `3d-viewer.html?${params.toString()}`;
+        btn3d.style.cssText = `
+            display: inline-flex; align-items: center; gap: 0.5rem;
+            background: linear-gradient(135deg, rgba(0,217,255,0.2), rgba(123,97,255,0.2));
+            border: 1.5px solid #00D9FF; border-radius: 12px;
+            padding: 0.6rem 1.2rem; color: #00D9FF;
+            font-size: 0.85rem; font-weight: 700; text-decoration: none;
+            margin-top: 0.75rem; width: 100%; justify-content: center;
+            transition: all 0.2s; letter-spacing: 0.5px;
+            animation: glow 2s ease-in-out infinite;
+        `;
+        btn3d.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+            </svg>
+            View Full 3D Wired Pack
+        `;
+        btn3d.onmouseover = () => btn3d.style.background = 'linear-gradient(135deg, rgba(0,217,255,0.35), rgba(123,97,255,0.35))';
+        btn3d.onmouseout = () => btn3d.style.background = 'linear-gradient(135deg, rgba(0,217,255,0.2), rgba(123,97,255,0.2))';
+        // Add glow animation
+        const glowStyle = document.createElement('style');
+        glowStyle.textContent = `@keyframes glow { 0%,100%{box-shadow:0 0 8px rgba(0,217,255,0.3)} 50%{box-shadow:0 0 20px rgba(0,217,255,0.7)} }`;
+        document.head.appendChild(glowStyle);
+        generateBtn.parentElement.appendChild(btn3d);
+    } else {
+        // Update URL params if re-generated
+        const params = new URLSearchParams({
+            s: config.seriesCells, p: config.parallelCells,
+            type: config.cellType, d: config.cellDiameter || 18,
+            l: config.cellLength || 65, bms: config.bmsProtection ? 1 : 0,
+            voltage: config.cellVoltage, capacity: config.cellCapacity,
+            maxA: config.maxDischarge, connector: config.outputConnector
+        });
+        existing3dBtn.href = `3d-viewer.html?${params.toString()}`;
+    }
 });
 
 // ===== Form Input Handlers =====
